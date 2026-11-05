@@ -1,3 +1,11 @@
+# v1.1.0 validation — 2026-11-05
+
+All 18 current suites pass under Godot 4.6.3: polish plus the 17 v1.0 suites below. Editor import clean. Major-menu EN audit: zero remaining Vietnamese strings across visited routes. New test validates bilingual formatted templates/language reload; 41 cached textures; hero upgrade funds/caps/stats/save; kit safe-room/checkpoint/zero persistence; Hard first-clear cores; floating damage cap/expiry/reduced effects. Arsenal suite rerun independently with verbose logging exits cleanly (initial concurrent run emitted a resource-cleanup warning).
+
+Rendered 360×800 both languages, arsenal/summon/hub/training/pets/admin gear. Screenshot previews in v1.1-*.png. Visual resource caching, offscreen animation suppression and gear pagination added. No actual S23 Ultra FPS, physical input, APK or long-term balance benchmark claimed. See VISUAL_LANGUAGE_HERO.md.
+
+--- Historical validation ---
+
 # v1.0.0 RPG validation — 2026-11-05
 
 Godot4.6.3 Linux Compatibility; editor import clean.17 suites pass: rpg_inventory, pets_practice, checkpoint_rewards, shooting, shooter_campaign, shooter_stress, admin_mobile, robots, summon, graphics, lobby, results, upgrade_ui, double_tap, arsenal, arsenal_stress, rpg_stress.

@@ -9,6 +9,7 @@ var progress = Progress.new()
 var adventure: Node
 var rpg_ui: Node
 var companions: Node2D
+var locale: Node
 var max_hp := 5
 var run_stats := {"hp":5,"damage":1.0,"speed":1.0,"crit":0.0,"cooldown":1.0,"cold":0.0,"burn":0.0,"barrier":false,"legend_shield":false,"sets":[0,0,0]}
 var run_pet := 0
@@ -150,6 +151,9 @@ func _ready() -> void:
 	audio = AudioDirector.new()
 	add_child(audio)
 	normal_save_path = save_path
+	locale = preload("res://scripts/localization.gd").new()
+	locale.preference_path = normal_save_path.get_basename()+"-language.cfg"
+	add_child(locale)
 	var mode_config := ConfigFile.new()
 	if mode_config.load(profile_mode_path()) == OK:
 		admin_enabled = bool(mode_config.get_value("mode","admin",false))
@@ -404,6 +408,7 @@ func start_run(run_mode := "survival", layout := "open") -> void:
 	run_tickets = 0
 	milestone_claimed = [false,false]
 	effects.effects.clear()
+	effects.numbers.clear()
 	move_clock = 0
 	player_lean = 0
 	admin_context = false
@@ -448,7 +453,7 @@ func start_run(run_mode := "survival", layout := "open") -> void:
 	aim = Vector2.UP
 	elapsed = 0
 	wave = 1
-	run_stats = progress.stats()
+	run_stats = progress.stats(selected_robot)
 	max_hp = int(run_stats.hp)
 	run_pet = progress.pet
 	hp = max_hp
@@ -803,6 +808,7 @@ func damage_enemy(enemy: ArenaEnemy, damage: float, impact := false, incoming :=
 	audio.play_event("enemy_hit")
 	effects.burst(enemy.position,Color("ffc39a"),"hit",incoming)
 	if mode == "practice": adventure.practice_damage += minf(damage,enemy.hp)
+	effects.damage_number(enemy.position,damage)
 	enemy.hp -= damage
 	enemy.flash = 0.08
 	if enemy.hp > 0:
@@ -891,7 +897,10 @@ func show_upgrades(restored := []) -> void:
 		var icon := Control.new()
 		icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		icon.position = Vector2(40,42)
-		icon.draw.connect(func(): NeonArt.icon(index,Vector2.ZERO,icon))
+		icon.draw.connect(func():
+			var groups := ["weapon","skill","weapon","skill","skill","weapon","weapon","skill","weapon","weapon","weapon","weapon","skill","weapon","pet","weapon"]
+			var ids := [0,6,5,1,3,8,1,0,5,6,9,11,2,10,0,9]
+			preload("res://scripts/item_art.gd").draw(icon,groups[index],ids[index],Vector2.ZERO,46))
 		card.add_child(icon)
 		var content := VBoxContainer.new()
 		content.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -1296,8 +1305,15 @@ func buy_or_equip(index: int) -> void:
 	save_profile()
 	show_skins()
 
+func show_languages() -> void:
+	clear_cards("TIẾNG VIỆT / ENGLISH","Chọn ngôn ngữ • Choose language")
+	add_button("Tiếng Việt",func(): locale.set_language("vi"); show_settings())
+	add_button("English",func(): locale.set_language("en"); show_settings())
+	add_button("VỀ SẢNH",show_menu)
+
 func show_settings() -> void:
 	clear_cards("SETTINGS","Âm thanh, hiệu ứng và điều khiển.")
+	add_button("TIẾNG VIỆT / ENGLISH",show_languages)
 	add_button("HOW TO PLAY",show_help)
 	add_button("BẮN KHI DI CHUYỂN: "+("BẬT" if shoot_while_moving else "TẮT"),func(): shoot_while_moving = not shoot_while_moving; save_profile(); show_settings())
 	add_button("SOUND: " + ("ON" if sound_on else "OFF"),func(): sound_on = not sound_on; audio.enabled = sound_on; audio.stop_all(); save_profile(); show_settings())
@@ -1497,7 +1513,7 @@ func show_robots(index := -1) -> void:
 	show_menu()
 	robot_gallery_index = selected_robot if index < 0 else clampi(index,0,RobotRoster.NAMES.size()-1)
 	var id := robot_gallery_index
-	clear_cards("ROBOT HANGAR","ADMIN • ALL ROBOTS FREE" if admin_enabled else "Choose your pilot • %d shards\nEach pilot has a unique skill. Choose weapons separately in Arsenal." % summon.shards)
+	clear_cards("KHO HERO","ADMIN • ALL ROBOTS FREE" if admin_enabled else "Choose your pilot • %d shards\nEach pilot has a unique skill. Choose weapons separately in Arsenal." % summon.shards)
 	cards.add_theme_constant_override("separation",14)
 	var portrait := Preview.new()
 	portrait.actor = id
@@ -1506,7 +1522,7 @@ func show_robots(index := -1) -> void:
 	cards.add_child(portrait)
 	var name_label := Label.new()
 	var rarity := "STARTER" if id == 0 else "RARE" if id in [1,5,6] else "EPIC" if id in [2,3] else "LEGENDARY"
-	name_label.text = RobotRoster.NAMES[id]+" • "+rarity+"\n"+RobotRoster.NOTES[id]+"\n"+Shooter.WEAPONS[id]+" • "+Shooter.SKILLS[id]
+	name_label.text = RobotRoster.NAMES[id]+" • "+rarity+" • LV "+str(progress.hero_levels[id])+"\n"+RobotRoster.NOTES[id]+"\n"+Shooter.WEAPONS[id]+" • "+Shooter.SKILLS[id]
 	name_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	name_label.add_theme_font_size_override("font_size",26)
 	name_label.add_theme_color_override("font_color",RobotRoster.COLORS[id])
@@ -1524,6 +1540,7 @@ func show_robots(index := -1) -> void:
 	var action := "EQUIPPED" if selected_robot == id else "EQUIP" if owned_robots.has(id) else "EXCHANGE • %d SHARDS" % Summons.EXCHANGE_COSTS[id]
 	var equip := add_button(action,buy_or_equip_robot.bind(id))
 	equip.disabled = selected_robot == id or (not owned_robots.has(id) and summon.shards < Summons.EXCHANGE_COSTS[id])
+	add_button("NÂNG NHÂN VẬT",rpg_ui.hero_training.bind(id))
 	add_button("BACK TO MENU",show_menu)
 
 func buy_or_equip_robot(index: int) -> void:
@@ -1576,16 +1593,23 @@ func grant_tickets(amount: int) -> void:
 
 func show_summon() -> void:
 	show_menu()
-	clear_cards("ROBOT SUMMON","%s • SHARDS %d\nBase: Rare 75%% / Epic 20%% / Legendary 5%%\nEpic+ pity %d/10 • Legendary pity %d/50\n1 ticket per pull. Every pull gives a robot.\nDuplicates → 5 / 15 / 50 shards." % ["ADMIN • FREE PULLS" if admin_enabled else "TICKETS %d" % summon.tickets,summon.shards,summon.epic_pity,summon.legendary_pity])
-	cards.add_theme_constant_override("separation",14)
-	var one := add_button("SUMMON ×1"+(" • FREE" if admin_enabled else " • 1 TICKET"),begin_summon.bind(1))
-	one.disabled = not admin_enabled and summon.tickets < 1
-	var ten := add_button("SUMMON ×10"+(" • FREE" if admin_enabled else " • 10 TICKETS"),begin_summon.bind(10))
-	ten.disabled = not admin_enabled and summon.tickets < 10
-	add_button("RATES & GUARANTEES",show_summon_rules)
-	if not summon.last_results.is_empty(): add_button("LAST RESULTS",show_summon_results)
-	add_button("EXCHANGE SHARDS / ROBOTS",show_robots)
-	add_button("BACK",show_menu)
+	clear_cards("TRIỆU HỒI HERO","HERO ĐÃ CÓ %d/7" % owned_robots.size())
+	var portal := preload("res://scripts/collectible_view.gd").new(); portal.group = "item"; portal.index = 1; portal.rarity = 3; portal.custom_minimum_size = Vector2(560,180); cards.add_child(portal)
+	result_label(cards,"Vé %d • Mảnh %d" % [summon.tickets,summon.shards],26,Color("a5ffe4"))
+	result_label(cards,"Bảo hiểm Sử thi %d/10 • Huyền thoại %d/50" % [summon.epic_pity,summon.legendary_pity],21)
+	var rates := HBoxContainer.new(); rates.add_theme_constant_override("separation",10); cards.add_child(rates)
+	for i in range(3):
+		var panel := PanelContainer.new(); panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL; panel.custom_minimum_size.y = 88
+		panel.add_theme_stylebox_override("panel",NeonArt.panel(Color("122c40"),Summons.COLORS[i],12)); rates.add_child(panel)
+		result_label(panel,["HIẾM • 75%","SỬ THI • 20%","HUYỀN THOẠI • 5%"][i],20,Summons.COLORS[i])
+	var row := HBoxContainer.new(); row.add_theme_constant_override("separation",12); cards.add_child(row)
+	for count in [1,10]:
+		var action := add_button("TRIỆU HỒI ×%d\n%s" % [count,"ADMIN MIỄN PHÍ" if admin_enabled else "%d vé" % count],begin_summon.bind(count))
+		cards.remove_child(action); row.add_child(action); action.custom_minimum_size = Vector2(275,106); action.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		action.add_theme_font_size_override("font_size",25); action.disabled = not admin_enabled and summon.tickets < count
+	add_button("TỶ LỆ & BẢO HIỂM",show_summon_rules)
+	if not summon.last_results.is_empty(): add_button("LỊCH SỬ TRIỆU HỒI",show_summon_results)
+	add_button("ĐỔI MẢNH / HERO",show_robots)
 
 func begin_summon(count: int) -> void:
 	if state != "menu": return
@@ -1640,7 +1664,7 @@ func show_summon_results() -> void:
 
 func show_stage_brief(stage: int) -> void:
 	var data: Dictionary = Campaign.data(stage)
-	clear_cards("ẢI %02d • %s" % [stage+1,data.name],"%s • 5 phòng • thời gian tùy bộ trang bị\nBoss: %s\n3 sao: thắng, còn ít nhất 60%% HP tối đa, hoàn thành trong 5 phút.\nLần đầu: 3 vé summon + đồ Sử thi cố định độ hiếm; Thường mở pet %s.\nChơi lại: vàng/vật liệu + 1 vé summon, %d%% rơi đồ.\nBắt đầu mới sẽ thay lượt Campaign đang lưu." % ["KHÓ" if campaign_hard else "THƯỜNG",data.boss,Progress.PETS[stage+1],55 if campaign_hard else 35])
+	clear_cards("ẢI %02d • %s" % [stage+1,data.name],"%s • 5 phòng • thời gian tùy bộ trang bị\nBoss: %s\n3 sao: thắng, còn ít nhất 60%% HP tối đa, hoàn thành trong 5 phút.\nLần đầu: 3 vé summon + đồ Sử thi cố định độ hiếm; Thường mở pet %s.\nChơi lại: vàng/vật liệu + 1 vé summon, %d%% rơi đồ.\nBắt đầu mới sẽ thay lượt Campaign đang lưu." % ["ĐỘ KHÓ KHÓ" if campaign_hard else "ĐỘ KHÓ THƯỜNG",data.boss,Progress.PETS[stage+1],55 if campaign_hard else 35])
 	var strip: HBoxContainer = rpg_ui.room_strip()
 	cards.move_child(strip,1)
 	add_button("BẮT ĐẦU MỚI",start_campaign.bind(stage))
@@ -1753,23 +1777,21 @@ func show_armory(index := -2) -> void:
 	show_menu()
 	armory_preview = selected_weapon if index == -2 else clampi(index,-1,Shooter.WEAPONS.size()-1)
 	var id := selected_robot if armory_preview == -1 else armory_preview
-	clear_cards("KHO VŨ KHÍ","12 vũ khí mở sẵn để thử • không tốn vàng\nRobot giữ kỹ năng riêng khi đổi vũ khí.")
+	clear_cards("KHO VŨ KHÍ","12 vũ khí • chọn riêng với robot • mở miễn phí")
 	cards.add_theme_constant_override("separation",12)
 	var preview := preload("res://scripts/weapon_preview.gd").new()
-	preview.weapon = id
-	preview.custom_minimum_size = Vector2(560,180)
-	cards.add_child(preview)
-	result_label(cards,("THEO ROBOT • " if armory_preview == -1 else "")+Shooter.WEAPONS[id],30,Shooter.COLORS[id])
-	result_label(cards,Shooter.INFO[id],24,Color("abcad6"))
-	result_label(cards,"Mỗi viên %.2f • nhịp %.2fs • tầm %d" % [Shooter.DAMAGES[id],Shooter.INTERVALS[id],Shooter.RANGES[id]],22)
-	var equip := add_button("ĐANG TRANG BỊ" if selected_weapon == armory_preview else "TRANG BỊ MIỄN PHÍ",equip_weapon.bind(armory_preview))
-	equip.disabled = selected_weapon == armory_preview
-	add_button("DÙNG VŨ KHÍ ĐẶC TRƯNG ROBOT",show_armory.bind(-1))
+	preview.weapon = id; preview.custom_minimum_size = Vector2(560,150); cards.add_child(preview)
+	result_label(cards,("THEO ROBOT • " if armory_preview == -1 else "")+Shooter.WEAPONS[id],28,Shooter.COLORS[id])
+	result_label(cards,Shooter.INFO[id],22,Color("abcad6"))
+	result_label(cards,"Mỗi viên %.2f • nhịp %.2fs • tầm %d" % [Shooter.DAMAGES[id],Shooter.INTERVALS[id],Shooter.RANGES[id]],20)
+	var row := HBoxContainer.new(); row.add_theme_constant_override("separation",10); cards.add_child(row)
+	for pair in [["ĐANG TRANG BỊ" if selected_weapon == armory_preview else "TRANG BỊ",equip_weapon.bind(armory_preview)],["THEO ROBOT",show_armory.bind(-1)]]:
+		var action := add_button(pair[0],pair[1]); cards.remove_child(action); row.add_child(action)
+		action.custom_minimum_size = Vector2(275,88); action.size_flags_horizontal = Control.SIZE_EXPAND_FILL; action.add_theme_font_size_override("font_size",23)
+		if pair[0] == "ĐANG TRANG BỊ": action.disabled = true
+	var grid := GridContainer.new(); grid.columns = 3; grid.add_theme_constant_override("h_separation",10); grid.add_theme_constant_override("v_separation",10); cards.add_child(grid)
 	for i in range(Shooter.WEAPONS.size()):
-		var choice := add_button(("✓ " if selected_weapon == i else "")+Shooter.WEAPONS[i],show_armory.bind(i))
-		choice.custom_minimum_size.y = 76
-		choice.add_theme_color_override("font_color",Shooter.COLORS[i])
-	add_button("VỀ SẢNH",show_menu)
+		rpg_ui.tile(grid,Shooter.WEAPONS[i],"weapon",i,show_armory.bind(i),selected_weapon == i,148)
 
 func equip_weapon(index: int) -> void:
 	if state != "menu" or index < -1 or index >= Shooter.WEAPONS.size(): return

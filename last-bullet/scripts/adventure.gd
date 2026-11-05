@@ -43,7 +43,7 @@ func enter_room() -> void:
 			game.spawn_enemy(3)
 			if is_instance_valid(game.boss): break
 		if is_instance_valid(game.boss):
-			game.boss.hp *= 1.65 if hard else 1.0; game.boss.max_hp = game.boss.hp
+			game.boss.hp *= 1.45 if hard else 1.0; game.boss.max_hp = game.boss.hp
 		spawned = 1
 	snapshot()
 	if room in [2,3]: show_choice()
@@ -98,18 +98,20 @@ func advance(delta: float) -> bool:
 	if room == 4:
 		if not is_instance_valid(game.boss) and not game.campaign_won:
 			game.spawn_enemy(3)
-			if is_instance_valid(game.boss) and hard: game.boss.hp *= 1.65; game.boss.max_hp = game.boss.hp
+			if is_instance_valid(game.boss) and hard: game.boss.hp *= 1.45; game.boss.max_hp = game.boss.hp
 		return false
 	clock -= delta
 	if spawned < quota and clock <= 0 and game.enemies.size() < (5 if room == 1 else 8):
-		clock = 1.5 if room == 1 else 1.1
+		clock = 2.4 if room == 1 else 2.8
 		var pool: Array = game.Campaign.data(game.active_stage).pool
-		var before: int = game.enemies.size()
-		game.spawn_enemy(int(pool[spawned%pool.size()]))
-		if game.enemies.size() > before:
-			spawned += 1
-			var enemy = game.enemies[-1]
-			enemy.hp *= (2.2 if room == 1 else 1.3)*(1.65 if hard else 1.0); enemy.max_hp = enemy.hp
+		for burst in range(2 if room == 1 else 3):
+			if spawned >= quota or game.enemies.size() >= (5 if room == 1 else 8): break
+			var before: int = game.enemies.size()
+			game.spawn_enemy(int(pool[spawned%pool.size()]))
+			if game.enemies.size() > before:
+				spawned += 1
+				var enemy = game.enemies[-1]
+				enemy.hp *= (2.2 if room == 1 else 1.3)*(1.45 if hard else 1.0); enemy.max_hp = enemy.hp
 	if spawned >= quota and game.enemies.is_empty():
 		room_reward(); pending_upgrade = true
 		game.level += 1
@@ -145,6 +147,9 @@ func show_choice() -> void:
 	game.clear_cards("PHÒNG %d/5 • %s" % [room+1,ROOM_NAMES[room]],"Tiến trình được lưu ở đầu phòng. Đồ đã nhận luôn được giữ.")
 	var strip = game.rpg_ui.room_strip(room)
 	game.cards.move_child(strip,1)
+	if game.progress.repair_kits > 0:
+		var kit = game.add_button("DÙNG BỘ SƠ CỨU • HỒI 3 HP",use_kit)
+		kit.disabled = game.hp >= game.max_hp
 	if room == 2:
 		game.add_button("HỒI 2 HP",choice.bind("heal"))
 		game.add_button("CHỌN MỘT NÂNG CẤP",choice.bind("upgrade"))
@@ -172,10 +177,10 @@ func sweep(stage: int, difficult: bool, count: int) -> Dictionary:
 	if not game.admin_enabled and (stars < 3 or game.progress.sweep_tickets < count): return {}
 	if game.progress.items.size()+count > 500: return {}
 	if not game.admin_enabled: game.progress.sweep_tickets -= count
-	var summary := {"gold":0,"mats":0,"gear":[],"tickets":count}
+	var summary := {"gold":0,"mats":0,"gear":[],"tickets":count,"cores":0,"kits":0}
 	for i in range(count):
 		var loot: Dictionary = game.progress.loot(stage,difficult)
-		summary.gold += int(loot.gold); summary.mats += int(loot.mats); summary.gear.append_array(loot.gear)
+		summary.gold += int(loot.gold); summary.mats += int(loot.mats); summary.gear.append_array(loot.gear); summary.cores += int(loot.get("cores",0)); summary.kits += int(loot.get("kits",0))
 	game.coins += int(summary.gold); game.summon.tickets += count
 	game.progress.last_loot = summary.duplicate(true)
 	game.save_profile()
@@ -206,3 +211,10 @@ func practice_max() -> void:
 	practice(practice_group)
 	game.upgrades.assign(Balance.UPGRADE_CAPS)
 	game.cooldown = 0
+
+func use_kit() -> void:
+	if game.state != "room_choice" or room not in [2,3] or game.progress.repair_kits <= 0 or game.hp >= game.max_hp: return
+	game.progress.repair_kits -= 1
+	game.hp = mini(game.max_hp,game.hp+3)
+	snapshot()
+	show_choice()

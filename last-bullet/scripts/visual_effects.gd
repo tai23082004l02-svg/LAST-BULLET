@@ -2,6 +2,8 @@ extends Node2D
 # One bounded renderer; no gameplay bodies/projectiles or per-spark nodes.
 var reduced := false
 var effects: Array[Dictionary] = []
+var numbers: Array[Dictionary] = []
+var number_font: Font = ThemeDB.fallback_font
 var clock := 0.0
 var active := true
 
@@ -10,6 +12,11 @@ func burst(point: Vector2, color: Color, kind := "hit", direction := Vector2.ZER
 	if effects.size() >= cap: effects.pop_front()
 	effects.append({"p":point,"color":color,"kind":kind,"age":0.0,"life":0.55 if kind == "death" else 0.35,"dir":direction})
 
+func damage_number(point: Vector2, amount: float) -> void:
+	if reduced: return
+	if numbers.size() >= 20: numbers.pop_front()
+	numbers.append({"p":point,"age":0.0,"text":"%.1f" % amount if amount < 1 else str(roundi(amount)),"large":amount >= 3})
+
 func advance(delta: float) -> void:
 	if not active: return
 	clock += delta
@@ -17,6 +24,10 @@ func advance(delta: float) -> void:
 	for i in range(effects.size()-1,-1,-1):
 		effects[i].age += delta
 		if effects[i].age >= effects[i].life: effects.remove_at(i)
+	for i in range(numbers.size()-1,-1,-1):
+		numbers[i].age += delta
+		if numbers[i].age >= 0.65: numbers.remove_at(i)
+	if reduced: numbers.clear()
 	queue_redraw()
 
 func _draw() -> void:
@@ -38,3 +49,8 @@ func _draw() -> void:
 				draw_set_transform(Vector2.ZERO)
 			else:
 				draw_line(point+direction*distance,point+direction*(distance+8*(1-t)),color,2)
+	for number in numbers:
+		var alpha: float = 1-float(number.age)/0.65
+		var point: Vector2 = number.p+Vector2(-12,-24-number.age*36)
+		draw_string(number_font,point+Vector2(1,1),number.text,HORIZONTAL_ALIGNMENT_LEFT,-1,19,Color(0.01,0.03,0.05,alpha))
+		draw_string(number_font,point,number.text,HORIZONTAL_ALIGNMENT_LEFT,-1,19,Color(1,0.85,0.5,alpha) if number.large else Color(0.82,1,0.97,alpha))

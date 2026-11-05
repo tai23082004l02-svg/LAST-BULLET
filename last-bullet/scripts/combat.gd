@@ -7,7 +7,7 @@ const INFO := ["Cân bằng, chính xác và dễ dùng.","Bắn nhanh; đạn n
 const COLORS := [Color("86fff0"),Color("ffe27d"),Color("a1edff"),Color("ff9f54"),Color("dcb2ff"),Color("ffcf91"),Color("8ddaff"),Color("ffa76d"),Color("c5ff9b"),Color("7af2df"),Color("ffc262"),Color("b7ed68")]
 const SKILLS := ["KHIÊN NĂNG LƯỢNG","XUNG ĐIỆN","ĐÓNG BĂNG","BÙNG CHÁY","BÃO LASER","LOẠT TÊN LỬA","LƯỚT NHANH"]
 const INTERVALS := [0.38,0.18,0.52,0.12,0.85,0.8,0.26,0.95,0.7,0.65,1.05,0.42]
-const DAMAGES := [1.4,0.65,1.7,0.42,3.5,1.0,0.9,3.0,2.7,1.8,3.2,1.2]
+const DAMAGES := [1.4,0.65,1.7,0.50,3.5,0.80,0.9,3.0,2.7,1.8,3.2,1.2]
 const SPEEDS := [760.0,850.0,700.0,440.0,1400.0,720.0,980.0,520.0,1150.0,570.0,390.0,650.0]
 const RANGES := [620.0,560.0,620.0,230.0,720.0,440.0,720.0,700.0,780.0,520.0,520.0,620.0]
 const SKILL_COOLDOWNS := [10.0,9.0,10.0,9.0,12.0,10.0,6.0]
@@ -105,6 +105,7 @@ func skill() -> void:
 	game.cooldown = 0.0 if game.admin_enabled and game.admin_free_skill else skill_cooldown()
 	skill_uses += 1
 	var robot: int = game.selected_robot
+	var skill_origin: Vector2 = game.player
 	var power: float = DAMAGES[game.selected_robot]*(1+game.upgrades[0]*0.22)*float(game.run_stats.damage)*(1+game.adventure.risk if game.mode == "campaign" else 1)
 	if robot == 0:
 		shield = 3.0
@@ -132,7 +133,7 @@ func skill() -> void:
 		for i in range(12 if robot == 4 else 7):
 			var angle := i*TAU/12 if robot == 4 else (i-3)*0.13
 			emit_shot(game.player,Vector2.UP.rotated(angle) if robot == 4 else direction.rotated(angle),power*3,5 if robot == 4 else 1,0,850,1100 if robot == 4 else 520,4 if robot == 4 else 7)
-	add_flash({"p":game.player,"ttl":0.45,"r":80.0 if robot in [0,6] else 220.0,"color":RobotRoster.COLORS[robot]})
+	add_flash({"p":game.player,"ttl":0.45,"r":80.0 if robot in [0,6] else 220.0,"color":RobotRoster.COLORS[robot],"kind":"skill","hero":robot,"origin":skill_origin})
 	game.audio.play_event("skill")
 	game.notice(SKILLS[robot])
 	game.check_missions()
@@ -370,7 +371,22 @@ func _draw() -> void:
 		draw_circle(shot.p,7,Color("ff684a"))
 		draw_arc(shot.p,8,0,TAU,12,Color("ffe0a3"),2)
 	for flash in flashes:
-		draw_arc(flash.p,flash.r*(1-flash.ttl*0.4),0,TAU,32,Color(flash.color,minf(0.6,flash.ttl*2)),3)
+		var alpha: float = minf(0.7,flash.ttl*2)
+		draw_arc(flash.p,flash.r*(1-flash.ttl*0.4),0,TAU,32,Color(flash.color,alpha),3)
+		if flash.get("kind","") == "skill" and not game.low_effects:
+			var type: int = flash.hero
+			if type == 6:
+				for i in range(3): draw_line(flash.origin+Vector2(0,i*8-8),flash.p+Vector2(0,i*8-8),Color(flash.color,alpha*0.6),4)
+			else:
+				for i in range(12 if type == 4 else 6):
+					var direction := Vector2.from_angle(i*TAU/(12 if type == 4 else 6)+flash.ttl)
+					var end: Vector2 = flash.p+direction*flash.r*(1-flash.ttl*0.2)
+					if type == 2: NeonArt.diamond(self,end,10,Color(flash.color,alpha))
+					elif type == 1:
+						draw_polyline(PackedVector2Array([flash.p+direction*20,flash.p+direction*100+direction.orthogonal()*18,end]),Color(flash.color,alpha),3)
+					elif type == 4: draw_line(flash.p+direction*24,end,Color(flash.color,alpha),4)
+					elif type == 0: draw_line(end,end+direction.rotated(PI/3)*25,Color(flash.color,alpha),4)
+					else: draw_circle(end,8,Color(flash.color,alpha*0.7))
 	if shield > 0 and shield_hits > 0:
 		draw_arc(game.player,38,0,TAU,32,Color("8bffe1"),3)
 
@@ -392,7 +408,15 @@ static func draw_round(canvas: CanvasItem, style: int, point: Vector2, direction
 		canvas.draw_circle(point,5,color)
 		canvas.draw_circle(point-Vector2(1,1),2,Color.WHITE)
 	else:
-		var tail := point-direction*(65 if style == 4 else 22 if style == 3 else 13)
+		if style == 2:
+			for i in range(3):
+				var arm := Vector2.from_angle(i*PI/3)
+				canvas.draw_line(point-arm*8,point+arm*8,Color(color,0.8),2)
+		elif style == 3:
+			canvas.draw_colored_polygon(PackedVector2Array([point+direction*9,point-direction*22+direction.orthogonal()*9,point-direction*14,point-direction*22-direction.orthogonal()*9]),Color(color,0.7))
+		elif style == 1:
+			canvas.draw_polyline(PackedVector2Array([point-direction*24,point-direction*13+direction.orthogonal()*4,point]),Color(color,0.8),2)
+		var tail := point-direction*(78 if style == 4 else 22 if style == 3 else 13)
 		canvas.draw_line(tail,point,Color(color,0.28),10 if style in [3,4] else 6)
 		canvas.draw_line(tail,point,color,4 if style in [3,4] else 2)
 		canvas.draw_circle(point,4,Color("ecffff"))

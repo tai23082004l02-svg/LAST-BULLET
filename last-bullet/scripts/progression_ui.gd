@@ -7,6 +7,7 @@ var fusion_picks: Array[int] = []
 var library_group := "hero"
 var library_filter := 0
 var gear_slot := -1
+var gear_page := 0
 var sweep_inflight := false
 func page(title: String, info := "") -> void:
 	game.show_menu()
@@ -26,30 +27,54 @@ func picture(group: String, index: int, rarity := 0, owned := true, height := 16
 func wallet() -> String: return "%d vàng • %d vật liệu • %d vé càn quét" % [game.coins,game.progress.materials,game.progress.sweep_tickets]
 func hub() -> void:
 	page("HÀNH TRANG",wallet())
-	picture("gear",4,2,true,140)
-	for pair in [["TRANG BỊ & HỢP NHẤT",gear],["PET ĐỒNG HÀNH",pets],["BỘ LƯU SẴN • 2/4 MÓN",presets],["THƯ VIỆN SƯU TẦM",library],["PHÓ BẢN & CÀN QUÉT",game.show_campaign],["KHU THỬ TRANG BỊ",practice],["NGOẠI HÌNH ĐẠN",game.show_skins]]: button(pair[0],pair[1])
+	var grid := GridContainer.new(); grid.columns = 2; grid.add_theme_constant_override("h_separation",12); grid.add_theme_constant_override("v_separation",12); game.cards.add_child(grid)
+	for row in [["TRANG BỊ & HỢP NHẤT","gear",4,gear],["PET ĐỒNG HÀNH","pet",game.progress.pet,pets],["NÂNG NHÂN VẬT","hero",game.selected_robot,hero_training.bind(game.selected_robot)],["VẬT PHẨM HỖ TRỢ","item",0,supplies],["BỘ TRANG BỊ","gear",1,presets],["THƯ VIỆN SƯU TẦM","hero",4,library],["PHÓ BẢN & CÀN QUÉT","skill",5,game.show_campaign],["KHU THỬ TRANG BỊ","weapon",4,practice]]:
+		tile(grid,row[0],row[1],row[2],row[3],false,156,275)
 	button("NHẬN 5 VÉ CÀN QUÉT NGÀY (UTC)",daily,game.progress.daily_day != Time.get_date_string_from_system(true))
-	button("VỀ SẢNH",game.show_menu)
+	button("NGOẠI HÌNH ĐẠN",game.show_skins)
+
+func tile(parent: Node, title: String, group: String, index: int, callback: Callable, selected := false, height := 156, width := 182) -> Button:
+	var b := Button.new(); b.focus_mode = Control.FOCUS_NONE; b.custom_minimum_size = Vector2(width,height)
+	NeonArt.style_button(b,Color("86eadc"),selected); b.pressed.connect(callback); parent.add_child(b)
+	var art := View.new(); art.group = group; art.index = index; art.rarity = 2 if selected else 0; art.position = Vector2(8,2); art.size = Vector2(width-16,height-48); b.add_child(art)
+	var label := Label.new(); label.text = ("✓ " if selected else "")+title; label.mouse_filter = Control.MOUSE_FILTER_IGNORE; label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART; label.position = Vector2(8,height-52); label.size = Vector2(width-16,48); label.add_theme_font_size_override("font_size",18); b.add_child(label)
+	return b
+
 func daily() -> void:
 	if game.state != "menu": return
 	if game.progress.claim_daily(Time.get_date_string_from_system(true)): game.save_profile()
 	hub()
-func gear(slot := -1) -> void:
+func gear(slot := -1, page_index := 0) -> void:
 	gear_slot = slot
-	page("TRANG BỊ",wallet()+"\nBốn ô • 4 độ hiếm • +0 đến +10 • chạm món để xem")
-	var stats: Dictionary = game.progress.stats()
+	gear_page = maxi(0,page_index)
+	page("KHO TRANG BỊ",wallet()+"\nBốn ô • 4 độ hiếm • +0 đến +10 • chạm món để xem")
+	var stats: Dictionary = game.progress.stats(game.selected_robot)
 	text("HP %d • sát thương +%d%% • tốc chạy +%d%%" % [int(stats.hp),roundi((stats.damage-1)*100),roundi((stats.speed-1)*100)],22)
+	var slots := GridContainer.new(); slots.columns = 4; slots.add_theme_constant_override("h_separation",8); game.cards.add_child(slots)
 	for i in range(4):
 		var entry: Dictionary = game.progress.item(game.progress.equipped[i])
-		button(RPG.SLOTS[i]+" • "+("TRỐNG" if entry.is_empty() else RPG.item_name(entry.kind)+" +"+str(entry.level)),gear.bind(i))
+		var slot_button := tile(slots,RPG.SLOTS[i]+(" +"+str(entry.level) if not entry.is_empty() else ""),"gear",int(entry.kind) if not entry.is_empty() else 4+i,gear.bind(i),i == gear_slot,128,134)
+		if entry.is_empty(): (slot_button.get_child(0) as Control).set("owned",false)
 	button("TẤT CẢ (%d/500)" % game.progress.items.size(),gear.bind(-1))
-	var entries: Array[Dictionary] = game.progress.items.duplicate()
+	var entries: Array[Dictionary] = []
+	for entry in game.progress.items:
+		if slot < 0 or int(entry.kind)%4 == slot: entries.append(entry)
 	entries.sort_custom(func(a,b): return a.rarity > b.rarity if a.rarity != b.rarity else a.id < b.id)
-	for entry in entries:
-		if slot >= 0 and int(entry.kind)%4 != slot: continue
-		var label := ("◆ " if game.progress.equipped.has(entry.id) else "")+("🔒 " if entry.locked else "")+RPG.item_name(entry.kind)+" +%d\n%s • #%d" % [entry.level,RPG.RARITIES[entry.rarity],entry.id]
-		var b := button(label,item_detail.bind(int(entry.id)))
-		b.add_theme_font_size_override("font_size",24); b.add_theme_color_override("font_color",RPG.COLORS[entry.rarity])
+	var pages := maxi(1,ceili(entries.size()/12.0))
+	gear_page = mini(gear_page,pages-1)
+	var grid := GridContainer.new(); grid.columns = 3; grid.add_theme_constant_override("h_separation",10); grid.add_theme_constant_override("v_separation",10); game.cards.add_child(grid)
+	for entry in entries.slice(gear_page*12,mini(entries.size(),gear_page*12+12)):
+		var label := RPG.item_name(entry.kind)+" +%d" % entry.level
+		var b := tile(grid,label,"gear",entry.kind,item_detail.bind(int(entry.id)),game.progress.equipped.has(entry.id),156)
+		NeonArt.style_button(b,RPG.COLORS[entry.rarity],game.progress.equipped.has(entry.id))
+		(b.get_child(0) as Control).set("rarity",int(entry.rarity))
+	if pages > 1:
+		text("%d / %d" % [gear_page+1,pages],22)
+		var navigation := HBoxContainer.new(); navigation.add_theme_constant_override("separation",10); game.cards.add_child(navigation)
+		for direction in [-1,1]:
+			var action := button("‹" if direction < 0 else "›",gear.bind(gear_slot,gear_page+direction),gear_page+direction in range(pages))
+			game.cards.remove_child(action); navigation.add_child(action); action.custom_minimum_size = Vector2(275,76)
 	button("VỀ HÀNH TRANG",hub)
 func gear_summary(entry: Dictionary) -> String:
 	var rarity: int = entry.rarity; var level: int = entry.level
@@ -170,7 +195,7 @@ func equip_pet(index: int) -> void:
 	game.progress.pet = index; game.save_profile(); pets()
 func presets() -> void:
 	page("BỘ TRANG BỊ",wallet()+"\nLưu/đổi cả 4 món, pet và vũ khí. Chỉ đổi ở sảnh.")
-	var stats: Dictionary = game.progress.stats()
+	var stats: Dictionary = game.progress.stats(game.selected_robot)
 	for i in range(3):
 		text("%s: %d/4 món • %s" % [RPG.SETS[i],stats.sets[i],"ĐỦ BỘ 4" if stats.sets[i] >= 4 else "BẬT BỘ 2" if stats.sets[i] >= 2 else "CHƯA ĐỦ"],24)
 	text("Băng 2: tăng lạnh • 4: +10% sát thương\nThành trì 2: +1 HP • 4: khiên thấp máu mỗi 20s\nHỏa ngục 2: +8% sát thương • 4: tăng cháy",22)
@@ -296,6 +321,7 @@ func claim_sweep(stage: int, hard: bool, count: int) -> void:
 		sweep_inflight = false
 		return
 	page("KẾT QUẢ CÀN QUÉT","×%d • +%d vàng • +%d vật liệu • +%d vé summon\nĐồ vào kho, không tự hợp nhất. Dùng Hợp nhất để ghép các món trùng." % [count,reward.gold,reward.mats,reward.tickets])
+	text("+%d lõi hero • +%d bộ sơ cứu" % [reward.get("cores",0),reward.get("kits",0)],23)
 	for uid in reward.gear:
 		var entry: Dictionary = game.progress.item(uid)
 		if not entry.is_empty(): text(RPG.item_name(entry.kind)+" • "+RPG.RARITIES[entry.rarity],24,RPG.COLORS[entry.rarity])
@@ -308,6 +334,7 @@ func practice() -> void:
 func loot_receipt() -> void:
 	var loot: Dictionary = game.progress.last_loot
 	page("RƯƠNG PHÓ BẢN","+%d vật liệu • %d món đồ\nĐã cộng vào kho, xem lại không nhận thêm. X2 chỉ áp dụng vàng trận." % [int(loot.get("mats",0)),loot.get("gear",[]).size()])
+	text("+%d lõi hero • +%d bộ sơ cứu" % [loot.get("cores",0),loot.get("kits",0)],23)
 	for uid in loot.get("gear",[]):
 		var entry: Dictionary = game.progress.item(int(uid))
 		if entry.is_empty(): continue
@@ -330,3 +357,35 @@ func room_strip(current := -1) -> HBoxContainer:
 		game.result_label(column,"%02d" % (i+1),22,Color("ffcc87") if i == 4 else Color("8bffe1"))
 		game.result_label(column,["GIAO\nTRANH","TINH\nANH","TIẾP\nTẾ","SỰ\nKIỆN","BOSS"][i],17)
 	return strip
+
+func hero_training(index: int) -> void:
+	page("NÂNG NHÂN VẬT",RobotRoster.NAMES[index]+" • Cấp %d/20" % game.progress.hero_levels[index])
+	picture("hero",index,collection_rarity("hero",index),game.owned_robots.has(index),180)
+	text("Sát thương +%d%% • HP +%d" % [(game.progress.hero_levels[index]-1)*2,int(game.progress.hero_levels[index])/5],23,RobotRoster.COLORS[index])
+	picture("skill",index,2,true,86)
+	text(game.Shooter.SKILLS[index],24,RobotRoster.COLORS[index])
+	text("+2% sát thương mỗi cấp • +1 HP mỗi 5 cấp",22)
+	text("%d lõi hero • %d vàng" % [game.progress.hero_cores,game.coins],24)
+	var level: int = game.progress.hero_levels[index]
+	var gold := level*100; var cores := 2+level/3
+	button("ĐẠT CẤP TỐI ĐA" if level >= 20 else "TĂNG CẤP HERO • %d vàng + %d lõi" % [gold,cores],train_hero.bind(index),game.owned_robots.has(index) and level < 20 and (game.admin_enabled or (game.coins >= gold and game.progress.hero_cores >= cores)))
+	var grid := GridContainer.new(); grid.columns = 3; grid.add_theme_constant_override("h_separation",10); grid.add_theme_constant_override("v_separation",10); game.cards.add_child(grid)
+	for id in game.owned_robots: tile(grid,RobotRoster.NAMES[id]+" • LV "+str(game.progress.hero_levels[id]),"hero",id,hero_training.bind(id),id == index,150)
+	button("KHO HERO",game.show_robots)
+	button("VỀ HÀNH TRANG",hub)
+func train_hero(index: int) -> void:
+	if game.state != "menu" or not game.owned_robots.has(index): return
+	var paid: Dictionary = game.progress.train_hero(index,game.coins,game.admin_enabled)
+	if not paid.is_empty(): game.coins -= int(paid.gold); game.save_profile()
+	hero_training(index)
+func supplies() -> void:
+	page("VẬT PHẨM HỖ TRỢ","Hồi máu và nâng nhân vật từ vật phẩm phó bản.")
+	picture("item",0,1,true,150)
+	text("BỘ SƠ CỨU • %d" % game.progress.repair_kits,26)
+	text("Hồi 3 HP trong phòng tiếp tế/sự kiện. Rơi từ rương boss.",22)
+	picture("item",1,2,true,150)
+	text("LÕI HERO • %d" % game.progress.hero_cores,26)
+	text("Dùng để nâng nhân vật. Nhận khi thắng boss hoặc càn quét.",22)
+	button("NÂNG NHÂN VẬT",hero_training.bind(game.selected_robot))
+	button("PHÓ BẢN & CÀN QUÉT",game.show_campaign)
+	button("VỀ HÀNH TRANG",hub)

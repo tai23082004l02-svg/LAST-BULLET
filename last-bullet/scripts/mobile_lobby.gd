@@ -199,7 +199,7 @@ func open_home() -> void:
 func open_section(title_text: String, front: bool) -> void:
 	visible = front
 	home_view.hide()
-	active_page = 1 if title_text.contains("ROBOT HANGAR") else 2 if title_text.contains("KHO VŨ KHÍ") else 3 if title_text.contains("SUMMON") else 4 if title_text.contains("BULLET SKINS") or title_text.contains("HÀNH TRANG") or title_text.contains("PET") or title_text.contains("TRANG BỊ") or title_text.contains("THƯ VIỆN") or title_text.contains("HỢP NHẤT") else 0
+	active_page = 1 if (title_text.contains("ROBOT HANGAR") or title_text.contains("KHO HERO") or title_text.contains("NÂNG NHÂN VẬT")) else 2 if title_text.contains("KHO VŨ KHÍ") else 3 if title_text.contains("SUMMON") else 4 if title_text.contains("BULLET SKINS") or title_text.contains("HÀNH TRANG") or title_text.contains("PET") or title_text.contains("TRANG BỊ") or title_text.contains("THƯ VIỆN") or title_text.contains("HỢP NHẤT") else 0
 	if front:
 		top_bar.show()
 		bottom_bar.show()

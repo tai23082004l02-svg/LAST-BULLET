@@ -10,6 +10,9 @@ var items: Array[Dictionary] = []
 var equipped: Array[int] = [-1,-1,-1,-1]
 var pets: Array[int] = [0]
 var pet := 0
+var hero_levels: Array[int] = [1,1,1,1,1,1,1]
+var hero_cores := 0
+var repair_kits := 2
 var materials := 30
 var sweep_tickets := 0
 var daily_day := ""
@@ -61,6 +64,12 @@ func read(config: ConfigFile, admin: bool, cleared: Array[int]) -> void:
 		if not pets.has(stage+1): pets.append(stage+1)
 	pet = int(config.get_value("rpg","pet",0))
 	if not pets.has(pet): pet = 0
+	hero_levels = [1,1,1,1,1,1,1]
+	var saved_levels: Variant = config.get_value("rpg","hero_levels",[])
+	if saved_levels is Array:
+		for i in range(mini(7,saved_levels.size())): hero_levels[i] = clampi(int(saved_levels[i]),1,20)
+	hero_cores = maxi(0,int(config.get_value("rpg","hero_cores",0)))
+	repair_kits = maxi(0,int(config.get_value("rpg","repair_kits",2)))
 	materials = maxi(0,int(config.get_value("rpg","materials",30)))
 	sweep_tickets = maxi(0,int(config.get_value("rpg","sweep_tickets",0)))
 	daily_day = str(config.get_value("rpg","daily_day",""))
@@ -90,6 +99,8 @@ func read(config: ConfigFile, admin: bool, cleared: Array[int]) -> void:
 	if admin:
 		pets = [0,1,2,3,4,5]
 		materials = maxi(materials,99999)
+		hero_cores = maxi(hero_cores,99999)
+		repair_kits = maxi(repair_kits,99)
 		for kind in range(12):
 			for rarity in range(4):
 				var found := false
@@ -98,7 +109,7 @@ func read(config: ConfigFile, admin: bool, cleared: Array[int]) -> void:
 				if not found: add_item(kind,rarity)
 
 func write(config: ConfigFile) -> void:
-	for pair in [["schema",1],["inventory",items],["equipped",equipped],["pets",pets],["pet",pet],["materials",materials],["sweep_tickets",sweep_tickets],["daily_day",daily_day],["presets",presets],["seen",seen],["hard_stars",hard_stars],["checkpoint",checkpoint],["receipts",receipts],["last_loot",last_loot]]:
+	for pair in [["schema",1],["hero_levels",hero_levels],["hero_cores",hero_cores],["repair_kits",repair_kits],["inventory",items],["equipped",equipped],["pets",pets],["pet",pet],["materials",materials],["sweep_tickets",sweep_tickets],["daily_day",daily_day],["presets",presets],["seen",seen],["hard_stars",hard_stars],["checkpoint",checkpoint],["receipts",receipts],["last_loot",last_loot]]:
 		var value: Variant = pair[1]
 		config.set_value("rpg",pair[0],value.duplicate(true) if value is Array or value is Dictionary else value)
 func mark(key: String) -> bool:
@@ -115,7 +126,7 @@ func mark(key: String) -> bool:
 func discover(key: String) -> bool:
 	if seen.has(key): return false
 	seen.append(key); return true
-func stats() -> Dictionary:
+func stats(hero := 0) -> Dictionary:
 	var result := {"hp":5,"damage":1.0,"speed":1.0,"crit":0.0,"cooldown":1.0,"cold":0.0,"burn":0.0,"barrier":false,"legend_shield":false,"legend_cold":false,"legend_fire":false,"sets":[0,0,0]}
 	for uid in equipped:
 		var entry := item(uid)
@@ -142,6 +153,8 @@ func stats() -> Dictionary:
 	if result.sets[1] >= 4: result.barrier = true
 	if result.sets[2] >= 2: result.damage += 0.08
 	if result.sets[2] >= 4: result.burn += 0.5
+	result.hp += hero_levels[hero]/5
+	result.damage *= 1+0.02*(hero_levels[hero]-1)
 	result.cooldown = maxf(0.65,result.cooldown)
 	return result
 func upgrade(uid: int, gold: int, admin: bool) -> Dictionary:
@@ -200,7 +213,7 @@ func dismantle(uid: int) -> Dictionary:
 				if int(preset.gear[i]) == uid: preset.gear[i] = -1
 	return result
 func loot(stage: int, hard: bool, force := false) -> Dictionary:
-	var result := {"gold":int((40+stage*20)*(1.5 if hard else 1.0)),"mats":int((8+stage*2)*(1.5 if hard else 1.0)),"gear":[]}
+	var result := {"gold":int((40+stage*20)*(1.5 if hard else 1.0)),"mats":int((8+stage*2)*(1.5 if hard else 1.0)),"gear":[],"cores":(2 if hard else 1)+(2 if force else 0),"kits":1 if rng.randf() < 0.25 else 0}
 	if force or rng.randf() < (0.55 if hard else 0.35):
 		var family: int = [1,0,2,0,2][stage] if stage < 4 else rng.randi_range(0,2)
 		var roll := rng.randf()
@@ -209,9 +222,18 @@ func loot(stage: int, hard: bool, force := false) -> Dictionary:
 		if id >= 0: result.gear.append(id)
 		else: result.mats += 8
 	materials += int(result.mats)
+	hero_cores += int(result.cores); repair_kits += int(result.kits)
 	last_loot = result.duplicate(true)
 	return result
 func claim_daily(day: String) -> bool:
 	if daily_day == day: return false
 	daily_day = day; sweep_tickets += 5
 	return true
+
+func train_hero(index: int, gold: int, admin: bool) -> Dictionary:
+	if index not in range(7) or hero_levels[index] >= 20: return {}
+	var cost: int = hero_levels[index]*100; var cores: int = 2+hero_levels[index]/3
+	if not admin and (gold < cost or hero_cores < cores): return {}
+	hero_levels[index] += 1
+	if not admin: hero_cores -= cores
+	return {"gold":0 if admin else cost}

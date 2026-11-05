@@ -1,3 +1,13 @@
+# CURRENT HANDOFF — v1.1.0 COMPLETE (2026-11-05)
+
+The authorized visual/UI/bilingual/hero-growth/balance batch is implemented and validated. Read VISUAL_LANGUAGE_HERO.md first, then RPG_SYSTEMS.md for preserved systems. This section supersedes older art/UI/test counts below. 18 current suites including polish; 41 cached vector icons; paged equipment; VI/EN settings with persisted global language; level1–20 hero training, hero cores and safe-room repair kits. See TEST_RESULTS.md for limits. No real-phone performance claim.
+
+User requested a one-time check three hours after 16:50 UTC on 2026-11-05. This cannot reset account usage. If the scheduled task runs after this completed release, inspect GitHub HEAD and report completion; do not repeat work or invent an endless new batch. User asks to end completed work with a question about the next feature/hero/removal. Preserve all existing controls, no ads, profile isolation and Termux workflow.
+
+New modules: item_art.gd, localization.gd, localization_catalog.gd; polish.gd regression. Art is generated in code with mipmaps and cached; no external image download needed. Runtime Translation resources are explicitly removed on exit. Additive profile fields hero_levels/hero_cores/repair_kits; language in normal-path basename + '-language.cfg'. Never reset inventory or progression to install the update.
+
+--- Previous release context ---
+
 # CURRENT HANDOFF — v1.0.0 RPG (2026-11-05)
 
 Read RPG_SYSTEMS.md first. This section supersedes older v0.8/v0.9 progression and timed-campaign notes below.
