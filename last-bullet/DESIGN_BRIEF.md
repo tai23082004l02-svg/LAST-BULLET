@@ -1,3 +1,5 @@
+> Historical design brief. v0.8.0 replaces permanent-bullet/Deflect gameplay with the user-approved auto-fire shooter. Read README.md and docs/SHOOTER.md for current rules. Original brief retained below.
+
 # LAST BULLET — Codex Implementation Brief
 
 **Studio:** ZORVYKA Games  

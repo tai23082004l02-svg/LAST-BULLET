@@ -15,11 +15,11 @@ func run() -> void:
 	await process_frame
 	assert(game.offered_upgrades.size() == 3 and game.state == "upgrade")
 	assert(game.upgrade_shade.visible and game.upgrade_shade.mouse_filter == Control.MOUSE_FILTER_STOP)
-	assert(not game.hud.visible and not game.mission_label.visible and not game.deflect_button.visible)
+	assert(not game.hud.visible and not game.mission_label.visible and not game.skill_button.visible)
 	var elapsed: float = game.elapsed
-	var bullet_position: Vector2 = game.bullet.position
+	var shot_count: int = game.combat.shots.size()
 	game._physics_process(1)
-	assert(game.elapsed == elapsed and game.bullet.position == bullet_position)
+	assert(game.elapsed == elapsed and game.combat.shots.size() == shot_count)
 	var touch := InputEventScreenTouch.new()
 	touch.pressed = true
 	touch.position = Vector2(300,600)
@@ -27,7 +27,7 @@ func run() -> void:
 	assert(game.joystick_id == -1)
 	for index in range(8):
 		assert(game.upgrade_delta(index).contains("→"))
-	assert(game.upgrade_delta(7).contains("0.65 → 0.77"))
+	assert(game.upgrade_delta(7).contains("10.0 → 9.0"))
 	for height in [1280,1600,1800]:
 		game.layout_viewport(Vector2(720,height),Vector2(40,32))
 		await process_frame

@@ -10,7 +10,11 @@ var phase := 0.0
 var appearance := 0.0
 var visual_lean := 0.0
 var dash := Vector2.ZERO
-var capture_ready := 5.0
+var fire_clock := 1.8
+var chilled := 0.0
+var burning := 0.0
+var burn_power := 0.0
+var burn_tick := 0.0
 var flash := 0.0
 var weak_timer := 0.0
 var boss_style := -1
@@ -22,7 +26,7 @@ var hazard_cycle := 0.0
 func setup(type: int, wave: int) -> void:
 	kind = type
 	radius = [19.0, 21.0, 28.0, 53.0, 25.0, 23.0][kind]
-	hp = [1.0, 2.0, 5.0, 65.0, 3.0, 3.0][kind] + floorf(float(wave - 1) / 3)
+	hp = [1.0, 2.0, 5.0, 180.0, 3.0, 3.0][kind] + floorf(float(wave - 1) / 3)
 	max_hp = hp
 	speed = [85.0, 100.0, 48.0, 40.0, 65.0, 0.0][kind] + minf(wave * 3, 50)
 	phase = randf_range(0, 2)
@@ -31,7 +35,6 @@ func setup(type: int, wave: int) -> void:
 func advance(delta: float, player: Vector2) -> void:
 	phase += delta
 	appearance = minf(1,appearance+delta*5)
-	capture_ready -= delta
 	weak_timer = maxf(0,weak_timer-delta)
 	flash = maxf(0, flash - delta)
 	var direction := (player - position).normalized()
@@ -63,6 +66,12 @@ func advance(delta: float, player: Vector2) -> void:
 	queue_redraw()
 
 func _draw() -> void:
+	if kind in [2,3,5] and fire_clock < 0.5:
+		draw_arc(Vector2.ZERO,radius+8,0,TAU*(1-clampf(fire_clock/0.5,0,1)),28,Color("ff8562"),3)
+	if chilled > 0:
+		draw_arc(Vector2.ZERO,radius+4,0,TAU,24,Color("9feaff"),2)
+	if burning > 0:
+		draw_circle(Vector2(0,radius*0.7),radius*0.6,Color(1,0.4,0.1,0.3))
 	if (kind == 5 or boss_style in [2,3,4]) and hazard_clock > 0:
 		var point := hazard_point-position
 		var active := hazard_active()
@@ -103,8 +112,7 @@ func _draw() -> void:
 		draw_circle(core,6,Color("fff4d4") if weak_timer > 0 else Color("152a38"))
 		if weak_timer > 0:
 			draw_arc(Vector2.ZERO,radius+16,0,TAU*weak_timer/3.0,48,Color("ffe4a3"),4)
-		else:
-			draw_arc(Vector2.ZERO,radius+14,phase,phase+TAU*clampf(capture_ready/9,0.02,1),48,Color(1,0.65,0.25,0.65),2)
+
 	if hp < max_hp:
 		var y := -radius-14
 		draw_line(Vector2(-radius,y),Vector2(radius,y),Color("071221"),6)
@@ -134,7 +142,7 @@ func advance_campaign_boss(delta: float, player: Vector2, direction: Vector2) ->
 		position += direction*speed*0.65*delta
 
 func status_text() -> String:
-	if weak_timer > 0: return "EXPOSED • RETURN ×4"
+	if weak_timer > 0: return "EXPOSED"
 	if boss_style == 1: return "SHIELD UP" if fmod(phase,6.0) < 3 else "SHIELD DOWN"
 	if boss_style == 4 and hp < max_hp*0.5: return "PHASE 2 • OVERLOAD"
 	if boss_style == 0 and fmod(phase,5.0) >= 2 and fmod(phase,5.0) < 3: return "CHARGE WARNING"

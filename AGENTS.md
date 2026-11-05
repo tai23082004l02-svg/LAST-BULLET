@@ -10,3 +10,6 @@
 - Không ghi đè thay đổi của người dùng, không force-push, reset --hard hoặc git clean để chữa lỗi pull. Xem git status/diff và bảo toàn dữ liệu trước.
 - Không commit thư mục .godot hoặc các .import của ảnh tài liệu/concept. Giữ .gdignore hiện có và cấu hình import ảnh runtime art/neon.
 - Khi người dùng yêu cầu triển khai và cập nhật GitHub, hoàn thành code, kiểm tra, tài liệu và push; báo commit/link và cách pull ngắn gọn. Không coi yêu cầu chỉ tư vấn là lệnh sửa code.
+
+## Current gameplay: v0.8
+User explicitly replaced the old single-bullet/Deflect design with auto-aim/auto-fire, robot weapons and skills. Read last-bullet/docs/SHOOTER.md. Do not restore permanent bullets/Perfect/capture-return boss rules. Movement is drag-anywhere except UI buttons, activated after a small drag threshold, not tap-to-move. Old Deflect tests are historical under tests/legacy/.gdignore; run the ten current suites in TEST_RESULTS.md. Keep original records/inventory and use separate shooter score keys.

@@ -33,7 +33,7 @@ func run() -> void:
 		await process_frame
 	assert(get_node_count() == count)
 	game.start_run()
-	var bullet = game.bullet
+	var combat = game.combat
 	for i in range(200):
 		game.effects.burst(Vector2(100+i,300),Color.CYAN,"death")
 	assert(game.effects.effects.size() == 80)
@@ -42,17 +42,17 @@ func run() -> void:
 	assert(game.effects.effects.size() == 24)
 	game.effects.advance(1)
 	assert(game.effects.effects.is_empty())
-	assert(game.bullet == bullet)
+	assert(game.combat == combat)
 	game.effects.burst(Vector2(150,300),Color.CYAN,"hit")
 	game.start_run()
 	assert(game.effects.effects.is_empty())
 	assert(ProjectSettings.get_setting("physics/common/physics_interpolation"))
-	assert(game.bullet.physics_interpolation_mode == Node.PHYSICS_INTERPOLATION_MODE_ON)
+	assert(game.combat.z_index == 20)
 	game.finish_run()
 	game._physics_process(0)
 	assert(not game.player_actor.visible and not game.effects.visible)
 	DirAccess.remove_absolute(game.save_path)
-	print("PASS: atlas bounds/cache, menu lifecycle, effects caps/expiry/reset, single bullet, interpolation and result visibility")
+	print("PASS: atlas bounds/cache, menu lifecycle, effects caps/expiry/reset, bounded projectile controller, interpolation and result visibility")
 	game.audio.shutdown()
 	OS.delay_msec(150)
 	await process_frame

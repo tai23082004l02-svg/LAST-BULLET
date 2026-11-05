@@ -40,15 +40,15 @@ func run() -> void:
 		game.start_run()
 		assert(game.player_actor.robot == i and game.hp == 5)
 		assert(game.coins == wallet)
-		var bullets := 0
+		var controllers := 0
 		for child in game.get_children():
-			if child is PermanentBullet: bullets += 1
-		assert(bullets == 1)
+			if child == game.combat: controllers += 1
+		assert(controllers == 1 and game.combat.shots.is_empty())
 		game.show_menu()
 	game.show_admin()
 	game.switch_admin(false)
 	assert(game.selected_robot == 1 and game.owned_robots.size() == 2 and game.coins == 100)
-	print("PASS: seven robot roster, atlas, funds check, single-charge purchase, save/equip, admin free access, profile isolation and unchanged HP/single bullet")
+	print("PASS: seven robot roster, atlas, funds check, single-charge purchase, save/equip, admin free access, profile isolation and preserved HP and robot ownership")
 	cleanup()
 	game.audio.shutdown()
 	OS.delay_msec(150)

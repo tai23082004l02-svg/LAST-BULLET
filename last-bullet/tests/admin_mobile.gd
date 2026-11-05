@@ -35,12 +35,12 @@ func run() -> void:
 	assert(game.coins == balance and game.selected_skin == 3)
 	game.show_admin()
 	game.toggle_admin_option("max")
-	game.toggle_admin_option("deflect")
+	game.toggle_admin_option("skill")
 	game.start_run()
 	for i in range(8): assert(game.upgrades[i] == Balance.UPGRADE_CAPS[i])
 	game.hurt_player(game.player)
 	assert(game.hp == 5)
-	game.request_deflect()
+	game.request_skill()
 	assert(game.cooldown == 0)
 	game.toggle_pause()
 	game.show_admin()
@@ -58,9 +58,9 @@ func run() -> void:
 	var count: int = game.enemies.size()
 	game.admin_spawn_enemy(3)
 	assert(game.enemies.size() == count)
-	var bullet = game.bullet
+	var combat = game.combat
 	game.admin_boss()
-	assert(game.state == "playing" and game.bullet == bullet)
+	assert(game.state == "playing" and game.combat == combat)
 	game.finish_run()
 	game.show_menu()
 	game.audio.shutdown()
@@ -69,7 +69,7 @@ func run() -> void:
 	await process_frame
 	# Mode and admin options survive reload; normal economy stays separate.
 	game = new_game()
-	assert(game.admin_enabled and game.admin_max_start and game.admin_free_deflect)
+	assert(game.admin_enabled and game.admin_max_start and game.admin_free_skill)
 	assert(game.selected_skin == 3)
 	game.show_admin()
 	game.switch_admin(false)
@@ -85,7 +85,7 @@ func run() -> void:
 	game.layout_viewport(Vector2(720,1600),Vector2(40,32))
 	await process_frame
 	assert(Balance.ARENA.position.y == 205 and Balance.ARENA.end.y == 1308)
-	assert(game.deflect_button.position.y+game.deflect_button.size.y < 1568)
+	assert(game.skill_button.position.y+game.skill_button.size.y < 1568)
 	assert(game.overlay.position.y >= 40)
 	assert(game.overlay.position.y+game.overlay.size.y <= 1568)
 	assert(game.joystick_origin.y+76 < 1568)
@@ -96,7 +96,7 @@ func run() -> void:
 	assert(game.in_movement_zone(Vector2(500,400)))
 	assert(game.in_movement_zone(Vector2(200,50)))
 	assert(not game.in_movement_zone(game.pause_button.position+game.pause_button.size/2))
-	assert(not game.in_movement_zone(game.deflect_button.position+game.deflect_button.size/2))
+	assert(not game.in_movement_zone(game.skill_button.position+game.skill_button.size/2))
 	assert(not game.in_movement_zone(Vector2(200,10)))
 	game.joystick = Vector2.ONE
 	game.joystick_id = 3
@@ -124,7 +124,7 @@ func run() -> void:
 	touch.pressed = false
 	game._input(touch)
 	assert(game.joystick_id == -1 and game.joystick == Vector2.ZERO)
-	assert(Balance.ARENA.has_point(game.bullet.position))
+	assert(Balance.ARENA.has_point(game.player))
 	game.layout_viewport(Vector2(1000,1280))
 	await process_frame
 	assert(game.horizontal_padding == 140 and game.ui.offset.x == 140)
@@ -132,7 +132,7 @@ func run() -> void:
 	game.layout_viewport(Vector2(720,1280))
 	assert(Balance.ARENA == Rect2(30,165,660,855))
 	assert(ProjectSettings.get_setting("display/window/stretch/aspect") == "expand")
-	print("PASS: admin unlocks/options/labs, single boss/bullet, paused tools, profile isolation/reload, normal restore, tall-phone safe layout/resize")
+	print("PASS: admin unlocks/options/labs, single boss, bounded projectile controller, paused tools, profile isolation/reload, normal restore, tall-phone safe layout/resize")
 	cleanup()
 	game.audio.shutdown()
 	OS.delay_msec(150)

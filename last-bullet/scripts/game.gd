@@ -6,11 +6,11 @@ signal run_ended
 
 var player := Vector2(360, 650)
 var aim := Vector2.UP
-var bullet: PermanentBullet
+const Shooter = preload("res://scripts/combat.gd")
+var combat: Node2D
 var enemies: Array[ArenaEnemy] = []
 var boss: ArenaEnemy
 var pickups: Array[Vector2] = []
-var fires: Array[Dictionary] = []
 const Lobby = preload("res://scripts/mobile_lobby.gd")
 var home_shell: Control
 var safe_margins := Vector2.ZERO
@@ -65,11 +65,6 @@ var mode := "survival"
 var arena_layout := "open"
 var challenge_complete := false
 var spawn_index := 0
-var attempts := 0
-var deflect_successes := 0
-var perfect_chain := 0
-var best_perfect_chain := 0
-var lifetime_chain := 0
 var blitz_best := 0
 var previous_record := 0
 var new_record := false
@@ -79,13 +74,13 @@ var upgrade_shade: ColorRect
 var selected_robot := 0
 var owned_robots: Array[int] = [0]
 var robot_gallery_index := 0
-var perfect_label: Label
+var weapon_label: Label
 var admin_enabled := false
 var normal_save_path := ""
 var admin_context := false
 var admin_god := true
 var admin_max_start := false
-var admin_free_deflect := false
+var admin_free_skill := false
 
 const AudioDirector = preload("res://scripts/audio.gd")
 var audio: Node
@@ -96,13 +91,11 @@ var selected_skin := 0
 var sound_on := true
 var haptics_on := true
 var save_path := "user://records.cfg"
-var perfect_count := 0
 var mission_claimed: Array[bool] = [false,false,false]
 var mission_label: Label
-var deflect_button: Button
+var skill_button: Button
 var pause_button: Button
 var feedback := 0.0
-var last_deflect_perfect := false
 var result_paid := false
 var offered_upgrades: Array[int] = []
 var state := "menu"
@@ -119,9 +112,6 @@ var xp := 0
 var level := 1
 var spawn_timer := 0.0
 var cooldown := 0.0
-var deflect_window := 0.0
-var slow := 0.0
-var fire_timer := 0.0
 var boss_spawned := false
 var best_score := 0
 var joystick_id := -1
@@ -149,6 +139,10 @@ func _ready() -> void:
 	if admin_enabled: save_path = admin_profile_path()
 	summon = Summons.new()
 	load_profile()
+	combat = Shooter.new()
+	combat.game = self
+	combat.z_index = 20
+	add_child(combat)
 	effects = FX.new()
 	effects.z_index = 12
 	add_child(effects)
@@ -191,11 +185,11 @@ func build_ui() -> void:
 		for i in range(5): NeonArt.heart(health_icons,Vector2(i*26,0),i<hp))
 	root.add_child(health_icons)
 	root.add_child(hud)
-	perfect_label = Label.new()
-	perfect_label.position = Vector2(42,110)
-	perfect_label.add_theme_font_size_override("font_size",20)
-	perfect_label.add_theme_color_override("font_color",Color("a1f5e0"))
-	root.add_child(perfect_label)
+	weapon_label = Label.new()
+	weapon_label.position = Vector2(42,110)
+	weapon_label.add_theme_font_size_override("font_size",20)
+	weapon_label.add_theme_color_override("font_color",Color("a1f5e0"))
+	root.add_child(weapon_label)
 	xp_bar = ProgressBar.new()
 	xp_bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	xp_bar.position = Vector2(40,137)
@@ -230,16 +224,16 @@ func build_ui() -> void:
 	pause_button.pressed.connect(toggle_pause)
 	NeonArt.style_button(pause_button)
 	root.add_child(pause_button)
-	var deflect := Button.new()
-	deflect_button = deflect
-	deflect.focus_mode = Control.FOCUS_NONE
-	deflect.text = "DEFLECT\nSPACE"
-	deflect.position = Vector2(495,1070)
-	deflect.size = Vector2(190,145)
-	deflect.add_theme_font_size_override("font_size",24)
-	deflect.button_down.connect(request_deflect)
-	NeonArt.style_button(deflect,Color("7fffe1"),true)
-	root.add_child(deflect)
+	var skill := Button.new()
+	skill_button = skill
+	skill.focus_mode = Control.FOCUS_NONE
+	skill.text = "KỸ NĂNG\nSPACE"
+	skill.position = Vector2(495,1070)
+	skill.size = Vector2(190,145)
+	skill.add_theme_font_size_override("font_size",24)
+	skill.button_down.connect(request_skill)
+	NeonArt.style_button(skill,Color("7fffe1"),true)
+	root.add_child(skill)
 	toast = Label.new()
 	toast.position = Vector2(40,955)
 	toast.size = Vector2(640,50)
@@ -349,15 +343,15 @@ func show_menu() -> void:
 	state = "menu"
 	audio.stop_all()
 	for enemy in enemies: enemy.hide()
-	if is_instance_valid(bullet): bullet.hide()
+	combat.hide()
 	clear_card_nodes()
 	overlay.hide()
 	home_shell.open_home()
 	layout_modal()
 
 func show_help() -> void:
-	clear_cards("ONE SHOT. YOUR CALL.", "1. Move with WASD / arrows, or drag anywhere except UI buttons. Avoid coral enemies.\n\n2. Aim with movement; the arrow previews your next deflect. Press SPACE inside the outer ring. Catch an incoming bullet inside the gold ring for PERFECT!\n\n3. Collect XP, choose upgrades, complete missions for skin coins. Shields block front hits; dodge yellow marked zones. Your bullet is harmless.\n\nPLAY offers Open, Reflector and 90-second Blitz. Chain Perfect catches for bonus points. After boss release, deflect back while its core is gold for x4 damage. Claim x2 gold instantly on results.")
-	add_button("BACK", show_menu)
+	clear_cards("CÁCH CHƠI", "Kéo ở bất kỳ vùng trống nào để di chuyển; chạm đơn không kích hoạt. Robot tự ngắm địch gần trong tầm và có đường bắn thông thoáng, tự bắn cả khi đang chạy.\n\nNé đạn đỏ/cam của địch và vùng cảnh báo. Đạn sáng của bạn không gây hại cho bạn.\n\nNút KỸ NĂNG (Space trên PC) dùng chiêu riêng của robot. Thu XP để chọn nâng cấp súng. Pause để tạm dừng.\n\nMỗi trận: hạ 15 địch, dùng 3 kỹ năng, đạt chuỗi hạ 10 địch. Mỗi mục tiêu tự trả 15 vàng + 1 vé, một lần. Kết thúc nhận x2 vàng ngay, không quảng cáo.")
+	add_button("VỀ SẢNH",show_menu)
 
 func show_modes() -> void:
 	clear_cards("CHOOSE YOUR RUN","Open arena to learn. Reflector to experiment. Blitz for a quick score chase.")
@@ -389,35 +383,25 @@ func start_run(run_mode := "survival", layout := "open") -> void:
 	mission_coins = 0
 	challenge_complete = false
 	spawn_index = 0
-	attempts = 0
-	deflect_successes = 0
-	perfect_chain = 0
-	best_perfect_chain = 0
 	new_record = false
 	if mode == "blitz":
 		rng.seed = 90300
 	else:
 		rng.randomize()
-	if is_instance_valid(bullet):
-		remove_child(bullet)
-		bullet.queue_free()
+	combat.reset()
 	for enemy in enemies:
 		remove_child(enemy)
 		enemy.queue_free()
 	enemies.clear()
 	boss = null
 	pickups.clear()
-	fires.clear()
 	upgrades = [0,0,0,0,0,0,0,0]
 	if admin_enabled and admin_max_start:
 		for i in range(upgrades.size()): upgrades[i] = Balance.UPGRADE_CAPS[i]
-	perfect_count = 0
 	mission_claimed = [false,false,false]
 	result_paid = false
 	reward_profile_path = ""
 	feedback = 0
-	fire_timer = 0
-	last_deflect_perfect = false
 	offered_upgrades.clear()
 	audio.stop_all()
 	player = Balance.ARENA.get_center()+Vector2(0,57.5)
@@ -442,24 +426,14 @@ func start_run(run_mode := "survival", layout := "open") -> void:
 	level = 1
 	spawn_timer = 0.5
 	cooldown = 0
-	deflect_window = 0
 	invulnerable = 0
-	slow = 0
 	boss_spawned = false
 	joystick_id = -1
 	joystick = Vector2.ZERO
-	bullet = PermanentBullet.new()
-	bullet.name = "Bullet"
-	bullet.z_index = 20
-	bullet.physics_interpolation_mode = Node.PHYSICS_INTERPOLATION_MODE_ON
-	bullet.skin = selected_skin
-	bullet.position = player + Vector2(0,-45)
-	add_child(bullet)
-	bullet.reset_physics_interpolation()
 	state = "playing"
 	update_hud()
 	overlay.hide()
-	notice("ONE BULLET. MAKE IT COUNT.")
+	notice("TỰ ĐỘNG BẮN • KÉO ĐỂ NÉ • SPACE: KỸ NĂNG")
 
 func _input(event: InputEvent) -> void:
 	# Release even if a finger ends over a GUI button that consumes the event.
@@ -478,7 +452,7 @@ func _unhandled_input(event: InputEvent) -> void:
 		return
 	if event is InputEventKey and event.pressed and not event.echo:
 		if event.keycode == KEY_SPACE:
-			request_deflect()
+			request_skill()
 		elif event.keycode == KEY_ESCAPE:
 			toggle_pause()
 	if state != "playing":
@@ -521,7 +495,7 @@ func in_movement_zone(pointer: Vector2) -> bool:
 	if not Rect2(0,safe_margins.x,720,canvas_height-safe_margins.x-safe_margins.y).has_point(pointer):
 		return false
 	# Buttons own their touches; all other screen space can start movement.
-	for button in [pause_button,deflect_button]:
+	for button in [pause_button,skill_button]:
 		if button.is_visible_in_tree() and Rect2(button.position,button.size).has_point(pointer):
 			return false
 	return true
@@ -536,13 +510,9 @@ func reset_stick() -> void:
 	joystick = Vector2.ZERO
 	joystick_origin = Vector2(185,canvas_height-safe_margins.y-145)
 
-func request_deflect() -> void:
-	if state == "playing" and cooldown <= 0:
-		attempts += 1
-		deflect_window = 0.22
-		cooldown = 0.0 if admin_enabled and admin_free_deflect else 0.65 + upgrades[7]*0.12
-		# Immediate sampling distinguishes a timed press from an early buffered catch.
-		try_deflect(true)
+func request_skill() -> void:
+	combat.skill()
+
 
 func toggle_pause() -> void:
 	if state == "playing":
@@ -559,7 +529,7 @@ func toggle_pause() -> void:
 		overlay.hide()
 
 func _physics_process(delta: float) -> void:
-	deflect_button.visible = state in ["playing","paused"]
+	skill_button.visible = state in ["playing","paused"]
 	pause_button.visible = state in ["playing","paused"]
 	hud.visible = state in ["playing","paused"]
 	xp_bar.visible = state in ["playing","paused"]
@@ -569,15 +539,15 @@ func _physics_process(delta: float) -> void:
 	header_panel.visible = playing_ui
 	brand.text = "LAST BULLET • ADMIN" if admin_enabled else "LAST BULLET"
 	brand.visible = playing_ui
-	perfect_label.visible = playing_ui
+	weapon_label.visible = playing_ui
 	health_icons.visible = playing_ui
 	health_icons.queue_redraw()
 	effects.visible = playing_ui
 	boss_label.visible = playing_ui and is_instance_valid(boss)
 	boss_bar.visible = boss_label.visible
 	if boss_label.visible:
-		var boss_name: String = Campaign.data(active_stage).boss if mode == "campaign" else "BULLET EATER"
-		boss_label.text = boss_name+" • " + ("CAPTURING" if bullet.capture > 0 else boss.status_text())
+		var boss_name: String = Campaign.data(active_stage).boss if mode == "campaign" else "SIEGE COMMANDER"
+		boss_label.text = boss_name+" • " + boss.status_text()
 		boss_bar.max_value = boss.max_hp
 		boss_bar.value = boss.hp
 	toast_time = maxf(0,toast_time-delta)
@@ -597,7 +567,7 @@ func _physics_process(delta: float) -> void:
 	feedback = maxf(0,feedback-delta)
 	wave = 1+active_stage+campaign_room-1 if mode == "campaign" else 1 + int(elapsed / (15 if mode == "blitz" else 20))
 	invulnerable = maxf(0,invulnerable-delta)
-	cooldown = 0.0 if admin_enabled and admin_free_deflect else maxf(0,cooldown-delta)
+	cooldown = 0.0 if admin_enabled and admin_free_skill else maxf(0,cooldown-delta)
 	combo_timer -= delta
 	if combo_timer <= 0:
 		combo = 0
@@ -613,18 +583,11 @@ func _physics_process(delta: float) -> void:
 	player += movement * Balance.PLAYER_SPEED * delta
 	player = player.clamp(Balance.ARENA.position+Vector2(18,18),Balance.ARENA.end-Vector2(18,18))
 	player = Geometry.resolve_all(player,18,world_obstacles())
-	if deflect_window > 0:
-		if not try_deflect(false):
-			deflect_window -= delta
-			if deflect_window <= 0:
-				perfect_chain = 0
-				notice("MISSED • PERFECT CHAIN RESET")
 	player_actor.position = player
 	player_actor.moving = player_moving
 	player_actor.target_lean = player_lean
 	player_actor.flash = maxf(0,invulnerable-1.1)*0.8 if invulnerable <= 1.2 else 0.0
-	bullet.effects_reduced = low_effects or enemies.size() > 24
-	bullet.advance(delta,self)
+	combat.advance(delta)
 	if state != "playing": return
 	if mode == "campaign":
 		var hazard_index := 0
@@ -632,14 +595,12 @@ func _physics_process(delta: float) -> void:
 			if Campaign.heat_state(elapsed,hazard_index) == 2 and box.grow(15).has_point(player): hurt_player(box.get_center())
 			hazard_index += 1
 		if state != "playing": return
-	slow = maxf(0,slow-delta)
-	var enemy_delta := delta * (0.35 if slow > 0 else 1.0)
+	var enemy_delta := delta
 	for enemy in enemies.duplicate():
 		if not is_instance_valid(enemy):
 			continue
 		var target := Geometry.navigate(enemy.position,player,enemy.radius,world_obstacles()) if enemy.kind != 5 else player
-		enemy.advance(enemy_delta,target)
-		enemy.weak_timer = maxf(0,enemy.weak_timer-(delta-enemy_delta))
+		enemy.advance(enemy_delta*(0.45 if enemy.chilled > 0 else 1.0),target)
 		enemy.position = Geometry.resolve_all(enemy.position,enemy.radius,world_obstacles())
 		if player.distance_to(enemy.position) < enemy.radius + 17:
 			hurt_player(enemy.position)
@@ -670,7 +631,7 @@ func _physics_process(delta: float) -> void:
 	if mode == "survival" and elapsed >= 240 and not boss_spawned:
 		boss_spawned = true
 		spawn_enemy(3)
-		notice("BULLET EATER HAS ARRIVED")
+		notice("SIEGE COMMANDER HAS ARRIVED")
 		audio.play_event("boss_warning")
 	for i in range(pickups.size()-1,-1,-1):
 		var distance := player.distance_to(pickups[i])
@@ -681,21 +642,6 @@ func _physics_process(delta: float) -> void:
 			effects.burst(player,Color("ffd68f"),"pickup")
 			xp += 1
 			audio.play_event("xp_pickup")
-	fire_timer -= delta
-	if upgrades[4] > 0 and fire_timer <= 0 and bullet.capture <= 0:
-		fire_timer = 0.16
-		fires.append({"p":bullet.position,"ttl":0.7,"tick":0.0})
-	for i in range(fires.size()-1,-1,-1):
-		fires[i].ttl -= delta
-		fires[i].tick -= delta
-		if fires[i].ttl <= 0:
-			fires.remove_at(i)
-			continue
-		if fires[i].tick <= 0:
-			fires[i].tick = 0.3
-			for enemy in enemies.duplicate():
-				if enemy.position.distance_to(fires[i].p) < enemy.radius+15:
-					damage_enemy(enemy,0.2*upgrades[4])
 	if xp >= xp_required():
 		xp -= xp_required()
 		level += 1
@@ -710,8 +656,6 @@ func _physics_process(delta: float) -> void:
 	update_hud()
 	queue_redraw()
 
-func bullet_speed() -> float:
-	return minf(Balance.MAX_BULLET_SPEED,Balance.BULLET_SPEED*(1+upgrades[1]*0.12))
 
 func xp_required() -> int:
 	return 4+level*3
@@ -730,11 +674,11 @@ func spawn_enemy(kind: int) -> void:
 	enemy.setup(kind,wave)
 	if kind == 3 and mode == "campaign":
 		enemy.boss_style = active_stage
-		enemy.hp = [20.0,32.0,42.0,50.0,75.0][active_stage]
+		enemy.hp = [100.0,145.0,185.0,220.0,300.0][active_stage]
 		enemy.max_hp = enemy.hp
 		enemy.speed = 65+active_stage*5
-		enemy.capture_ready = 4
 	enemy.phase = rng.randf_range(0,2)
+	enemy.fire_clock = rng.randf_range(1.0,2.5)
 	var spawn := Vector2.ZERO
 	for attempt in range(16):
 		spawn = Vector2(rng.randf_range(90,630),rng.randf_range(Balance.ARENA.position.y+60,Balance.ARENA.end.y-60))
@@ -758,14 +702,9 @@ func spawn_enemy(kind: int) -> void:
 func damage_enemy(enemy: ArenaEnemy, damage: float, impact := false, incoming := Vector2.ZERO) -> void:
 	if not enemies.has(enemy):
 		return
-	if (enemy.kind == 4 and not impact) or (impact and enemy.blocks(incoming)):
+	if impact and enemy.blocks(incoming):
 		audio.play_event("bounce",0.8)
 		return
-	if enemy.kind == 3 and impact and bullet.return_strike and enemy.weak_timer > 0:
-		damage *= 4
-		bullet.return_strike = false
-		notice("RETURN STRIKE • ×4 DAMAGE!")
-		audio.play_event("deflect",1.35)
 	audio.play_event("enemy_hit")
 	effects.burst(enemy.position,Color("ffc39a"),"hit",incoming)
 	enemy.hp -= damage
@@ -787,7 +726,7 @@ func damage_enemy(enemy: ArenaEnemy, damage: float, impact := false, incoming :=
 	var was_boss := enemy == boss
 	if was_boss:
 		boss = null
-		notice("BULLET EATER DEFEATED!")
+		notice("BOSS DEFEATED!")
 	enemies.erase(enemy)
 	enemy.queue_free()
 	enemy_killed.emit(points)
@@ -796,23 +735,22 @@ func damage_enemy(enemy: ArenaEnemy, damage: float, impact := false, incoming :=
 		finish_run()
 
 func upgrade_color(index: int) -> Color:
-	return Color("ffb779") if index in [0,4,5,6] else Color("83cfff") if index in [3,7] else Color("83f5db")
+	return Color("ffb779") if index in [0,3,4,5,6] else Color("83cfff") if index == 7 else Color("83f5db")
 
 func upgrade_delta(index: int) -> String:
 	var current := upgrades[index]
 	var next := mini(current+1,Balance.UPGRADE_CAPS[index])
 	match index:
-		0: return "Sát thương cơ bản: %d → %d" % [1+current,1+next]
-		1: return "Tốc độ đạn: %d → %d" % [mini(950,int(560*(1+current*0.12))),mini(950,int(560*(1+next*0.12)))]
-		2: return "Lái tự động khi đứng yên: %.2f → %.2f rad/s" % [0.45+current*0.25,0.45+next*0.25]
-		3: return "Làm chậm sau đỡ đạn: %.1f → %.1f giây" % [0.0 if current == 0 else 0.6+current*0.3,0.6+next*0.3]
-		4: return "Sát thương mỗi nhịp lửa: %.1f → %.1f" % [0.2*current,0.2*next]
-		5: return "Xuyên thêm sau đỡ đạn: %d → %d địch" % [current,next]
-		6: return "Sát thương tích từ nảy tường: tối đa +%d → +%d" % [current,next]
+		0: return "Sát thương: %.2f → %.2f" % [Shooter.DAMAGES[selected_robot]*(1+current*0.22),Shooter.DAMAGES[selected_robot]*(1+next*0.22)]
+		1: return "Nhịp bắn: %.2f → %.2f giây" % [Shooter.INTERVALS[selected_robot]/(1+current*0.16),Shooter.INTERVALS[selected_robot]/(1+next*0.16)]
+		2: return "Đạn mỗi loạt: %d → %d" % [(5 if selected_robot == 5 else 1)+current,(5 if selected_robot == 5 else 1)+next]
+		3: return "Chí mạng: %d%% → %d%% • sát thương ×1.8" % [current*8,next*8]
+		4: return "Sát thương cháy/giây: %.1f → %.1f" % [maxf(0.6 if selected_robot == 3 else 0,current*0.5),maxf(0.6 if selected_robot == 3 else 0,next*0.5)]
+		5: return "Xuyên thêm: %d → %d địch" % [current+(3 if selected_robot == 4 else 0),next+(3 if selected_robot == 4 else 0)]
+		6: return "Nảy sang mục tiêu mới: %d → %d" % [current+(1 if selected_robot == 1 else 0),next+(1 if selected_robot == 1 else 0)]
 		7:
-			var wait := "Hồi chiêu: %.2f → %.2f giây" % [0.65+current*0.12,0.65+next*0.12]
-			if admin_enabled and admin_free_deflect: wait = "Admin đang bỏ hồi chiêu"
-			return "Bán kính bắt: %d → %d\n%s" % [105+current*18,105+next*18,wait]
+			if admin_enabled and admin_free_skill: return "Giảm hồi chiêu: %d%% → %d%%\nAdmin đang bỏ hồi kỹ năng" % [current*10,next*10]
+			return "Hồi kỹ năng: %.1f → %.1f giây" % [Shooter.SKILL_COOLDOWNS[selected_robot]*(1-current*0.1),Shooter.SKILL_COOLDOWNS[selected_robot]*(1-next*0.1)]
 	return ""
 
 func show_upgrades() -> void:
@@ -833,8 +771,8 @@ func show_upgrades() -> void:
 	available.shuffle()
 	offered_upgrades.clear()
 	for i in range(mini(3,available.size())): offered_upgrades.append(available[i])
-	var names := ["Đạn hạng nặng","Gia tốc","Trợ lực từ","Bẻ cong thời gian","Vệt lửa","Đạn xuyên","Nảy tích lực","Vòng bắt rộng"]
-	var hints := ["Tăng lực đánh mỗi lần đạn trúng.","Đạn bay nhanh hơn.","Đứng yên để đạn tự hướng về địch.","Đỡ đạn để làm chậm kẻ địch.","Đạn để lại vùng đất cháy.","Đỡ đạn để xuyên thêm kẻ địch.","Nảy tường để tích thêm sát thương.","Dễ bắt đạn hơn, đổi lại hồi lâu hơn."]
+	var names := Balance.UPGRADE_NAMES
+	var hints := Balance.UPGRADE_INFO
 	for index in offered_upgrades:
 		var accent := upgrade_color(index)
 		var card := add_button("",choose_upgrade.bind(index))
@@ -885,14 +823,13 @@ func finish_run() -> void:
 		blitz_best = maxi(blitz_best,total)
 	elif mode != "campaign":
 		best_score = maxi(best_score,total)
-	lifetime_chain = maxi(lifetime_chain,best_perfect_chain)
 	var reward := mini(50,int(kills/5)+int(elapsed/30))
 	if mode == "campaign" and campaign_won:
 		var first := not campaign_cleared.has(active_stage)
 		if first: campaign_cleared.append(active_stage)
 		campaign_unlocked = maxi(campaign_unlocked,mini(5,active_stage+2))
 		preferred_stage = mini(4,active_stage+1)
-		var stars := 1+(1 if hp >= 3 else 0)+(1 if perfect_count >= 3 else 0)
+		var stars := 1+(1 if hp >= 3 else 0)+(1 if elapsed <= float(Campaign.data(active_stage).at)+60 else 0)
 		campaign_stars[active_stage] = maxi(campaign_stars[active_stage],stars)
 		reward += 40+active_stage*20
 		grant_tickets(3 if first else 1)
@@ -903,14 +840,9 @@ func finish_run() -> void:
 	audio.stop_all()
 	audio.play_event("level_up" if challenge_complete else "defeat")
 	var record_text := "CAMPAIGN SCORE" if mode == "campaign" else (("NEW RECORD! +%d" % (total-previous_record)) if new_record else "RECORD %d" % previous_record)
-	final_summary = "TIME %s  •  SCORE %d\nKILLS %d\nPERFECT %d  •  BEST STREAK %d\nDEFLECT %d/%d (%d%%)\n%s\nCOINS: run %d + missions %d = %d" % [time_text(),total,kills,perfect_count,best_perfect_chain,deflect_successes,attempts,deflect_rate(),record_text,reward,mission_coins,run_coins]
-	final_summary += "\nTICKETS +%d • TOTAL %d" % [run_tickets,summon.tickets]
-	if mode == "campaign":
-		final_summary = ("STAGE CLEAR • %s" % "★".repeat(campaign_stars[active_stage]) if campaign_won else "STAGE FAILED • RETRY")+"\n"+Campaign.data(active_stage).name+"\n"+final_summary
-	if mode == "blitz":
-		final_summary = ("FINISHED • " if challenge_complete else "TIME CHALLENGE • ")+medal(total)+"\n"+final_summary
+	final_summary = "TIME %s • SCORE %d\nKILLS %d • SKILLS %d • CRITS %d\n%s\nGOLD +%d • TICKETS +%d" % [time_text(),total,kills,combat.skill_uses,combat.criticals,record_text,run_coins,run_tickets]
 	for enemy in enemies: enemy.hide()
-	bullet.hide()
+	combat.hide()
 	update_hud()
 	show_results()
 	run_ended.emit()
@@ -1006,15 +938,13 @@ func show_results() -> void:
 	details.name = "ResultDetailsToggle"
 	details.custom_minimum_size.y = 64
 	details.add_theme_font_size_override("font_size",22)
-	var detail_text := result_label(cards,"PERFECT %d • CHUỖI CAO NHẤT %d\nDEFLECT %d/%d (%d%%)" % [perfect_count,best_perfect_chain,deflect_successes,attempts,deflect_rate()],22,Color("8eb8c7"))
+	var detail_text := result_label(cards,"ĐẠN BẮN %d • TRÚNG ĐÍCH %d\nCHÍ MẠNG %d • KỸ NĂNG %d\nCHUỖI HẠ ĐỊCH %d" % [combat.shots_fired,combat.hits,combat.criticals,combat.skill_uses,best_combo],22,Color("8eb8c7"))
 	detail_text.name = "ResultDetails"
 	detail_text.hide()
 	details.pressed.connect(func():
 		detail_text.visible = not detail_text.visible
 		details.text = "THU GỌN ▴" if detail_text.visible else "CHI TIẾT TRẬN ▾")
 
-func deflect_rate() -> int:
-	return clampi(int(round(100.0*deflect_successes/maxi(1,attempts))),0,100)
 
 func medal(total: int) -> String:
 	if total >= 3000: return "GOLD"
@@ -1022,12 +952,6 @@ func medal(total: int) -> String:
 	if total >= 600: return "BRONZE"
 	return "KEEP PRACTICING • BRONZE AT 600"
 
-func next_skin_hint() -> String:
-	for i in range(1,4):
-		if not owned_skins.has(i):
-			var missing := maxi(0,Balance.SKIN_COSTS[i]-coins)
-			return "%d coins to %s" % [missing,Balance.SKIN_NAMES[i]] if missing > 0 else "%s is ready to unlock!" % Balance.SKIN_NAMES[i]
-	return "ALL SKINS UNLOCKED • BEST PERFECT STREAK %d" % lifetime_chain
 
 func claim_double_gold() -> void:
 	# Admin build: instant claim, once per completed run. No ad provider involved.
@@ -1049,12 +973,12 @@ func notice(text: String) -> void:
 func update_hud() -> void:
 	var clock := time_text() if mode != "blitz" else "%02d:%02d" % [int(maxf(0,90-elapsed))/60,int(maxf(0,90-elapsed))%60]
 	hud.text = "HP %d/5    %s    %s %d\nSCORE %d  •  KILL ×%d" % [hp,clock,"WAVE" if mode != "blitz" else "BLITZ",wave,score+int(elapsed),combo]
-	perfect_label.text = "PERFECT ×%d  •  LV %d" % [perfect_chain,level]
-	if mode == "campaign": perfect_label.text += "  •  S%d R%d" % [active_stage+1,campaign_room]
+	weapon_label.text = "%s • LV %d" % [Shooter.WEAPONS[selected_robot],level]
+	if mode == "campaign": weapon_label.text += "  •  S%d R%d" % [active_stage+1,campaign_room]
 	xp_bar.max_value = xp_required()
 	xp_bar.value = xp
-	mission_label.text = "MISSIONS  Kills %d/15  •  Perfect %d/3  •  Chain %d/10" % [mini(kills,15),mini(perfect_count,3),mini(best_combo,10)]
-	deflect_button.text = "DEFLECT\n" + ("READY" if cooldown <= 0 else "%.1fs" % cooldown)
+	mission_label.text = "HẠ ĐỊCH %d/15 • KỸ NĂNG %d/3 • CHUỖI %d/10" % [mini(kills,15),mini(combat.skill_uses,3),mini(best_combo,10)]
+	skill_button.text = ["KHIÊN","XUNG ĐIỆN","ĐÓNG BĂNG","BÙNG CHÁY","BÃO LASER","TÊN LỬA","LƯỚT"][selected_robot]+"\n" + ("SẴN SÀNG" if cooldown <= 0 else "%.1fs" % cooldown)
 
 func _process(delta: float) -> void:
 	visual_clock += delta
@@ -1063,7 +987,7 @@ func _process(delta: float) -> void:
 func _draw() -> void:
 	draw_texture_rect(NeonArt.FLOOR,Balance.ARENA,false)
 	if state in ["menu","results","admin","summon","summon_results"]:
-		draw_rect(Rect2(0,0,720,1280),Color(0.01,0.02,0.05,0.3))
+		draw_rect(Rect2(0,0,720,canvas_height),Color(0.01,0.02,0.05,0.3))
 		return
 	if mode == "campaign": Campaign.draw_arena(self,Balance.ARENA,active_stage,elapsed)
 	for pillar in world_obstacles():
@@ -1071,28 +995,8 @@ func _draw() -> void:
 	for point in pickups:
 		if not low_effects: NeonArt.glow(self,point,4,Color("ffc777"))
 		NeonArt.diamond(self,point,6,Color("ffd38c"))
-	for fire in fires:
-		var alpha: float = fire.ttl*(0.2 if low_effects or enemies.size()>24 else 0.4)
-		draw_circle(fire.p,15,Color(1,0.45,0.12,alpha))
-		draw_arc(fire.p,8,0,TAU,12,Color(1,0.7,0.2,alpha),2)
-	var ready := cooldown <= 0
-	draw_arc(player,deflect_radius(),0,TAU,64,Color(0.3,1,0.8,0.55 if ready else 0.13),1.5)
-	draw_arc(player,Balance.PERFECT_RADIUS,0,TAU,48,Color(1,0.82,0.4,0.6),1.5)
-	if not ready:
-		var progress := 1-cooldown/(0.65+upgrades[7]*0.12)
-		draw_arc(player,deflect_radius(),-PI/2,-PI/2+TAU*progress,48,Color(0.5,1,0.9,0.6),2.5)
-	if is_instance_valid(bullet) and bullet.capture <= 0 and player.distance_to(bullet.position) < deflect_radius()+80:
-		var end := player+aim*145
-		draw_line(player+aim*27,end,Color(0.6,1,0.85,0.7),3)
-		draw_colored_polygon(PackedVector2Array([end+aim*5,end-aim.rotated(0.5)*22,end-aim.rotated(-0.5)*22]),Color("a4ffe0"))
-	if deflect_window > 0:
-		draw_arc(player,deflect_radius()-8,0,TAU,64,Color.WHITE,3)
-	if is_instance_valid(bullet) and bullet.capture <= 0 and player.distance_to(bullet.position) > 280:
-		var direction := (bullet.position-player).normalized()
-		var pointer := player+direction*125
-		draw_colored_polygon(PackedVector2Array([pointer+direction*13,pointer-direction.rotated(0.65)*10,pointer-direction.rotated(-0.65)*10]),Color("d7fdff"))
-	if is_instance_valid(bullet) and bullet.capture > 0:
-		draw_line(bullet.position,player,Color(1,0.8,0.3,0.4),3)
+	if state == "playing":
+		draw_line(player+aim*22,player+aim*40,Color("b5fff0"),4)
 	# Floating joystick appears only while dragging.
 	if joystick_id != -1 and joystick_dragging and state == "playing":
 		# Thumb controls: layered rings and a damped visual thumb cap.
@@ -1107,45 +1011,14 @@ func _draw() -> void:
 		draw_circle(thumb,29,Color("173e4b"))
 		draw_arc(thumb,29,0,TAU,40,Color("60b9c3"),2)
 
-func deflect_radius() -> float:
-	return Balance.DEFLECT_RADIUS + upgrades[7]*18
-
-func try_deflect(immediate: bool) -> bool:
-	if bullet.capture > 0 or player.distance_to(bullet.position) > deflect_radius():
-		return false
-	var incoming := bullet.velocity.dot(player-bullet.position) > 0
-	deflect_successes += 1
-	last_deflect_perfect = immediate and incoming and player.distance_to(bullet.position) <= Balance.PERFECT_RADIUS
-	bullet.velocity = aim * bullet_speed()
-	bullet.boost = 2.2 if last_deflect_perfect else 1.0
-	bullet.perfect_boost = last_deflect_perfect
-	bullet.pierce_left = upgrades[5]
-	bullet.bank_charge = 0
-	bullet.return_strike = bullet.return_window > 0
-	deflect_window = 0
-	if upgrades[3] > 0:
-		slow = 0.6+upgrades[3]*0.3
-	if last_deflect_perfect:
-		perfect_count += 1
-		perfect_chain += 1
-		best_perfect_chain = maxi(best_perfect_chain,perfect_chain)
-		if perfect_chain > lifetime_chain:
-			lifetime_chain = perfect_chain
-			save_profile()
-		score += 25*mini(perfect_chain,10)
-		feedback = 0.45
-		effects.burst(player,Color("ffe6a3"),"perfect")
-		if haptics_on and OS.has_feature("mobile"):
-			Input.vibrate_handheld(35)
-	else:
-		perfect_chain = 0
-	audio.play_event("deflect",minf(1.4,1.1+perfect_chain*0.04) if last_deflect_perfect else 0.9)
-	notice("PERFECT ×%d • +%d" % [perfect_chain,25*mini(perfect_chain,10)] if last_deflect_perfect else "DEFLECT!")
-	check_missions()
-	return true
 
 func hurt_player(source: Vector2) -> void:
 	if (admin_enabled and admin_god) or invulnerable > 0 or state != "playing":
+		return
+	if combat.shield > 0 and combat.shield_hits > 0:
+		combat.shield_hits -= 1
+		invulnerable = 0.25
+		effects.burst(player,Color("8bffe1"),"hit")
 		return
 	hp -= 1
 	invulnerable = 1.2
@@ -1156,7 +1029,7 @@ func hurt_player(source: Vector2) -> void:
 		finish_run()
 
 func check_missions() -> void:
-	var progress := [kills,perfect_count,best_combo]
+	var progress := [kills,combat.skill_uses,best_combo]
 	var goals := [15,3,10]
 	for i in range(3):
 		if not mission_claimed[i] and progress[i] >= goals[i]:
@@ -1171,9 +1044,8 @@ func check_missions() -> void:
 func load_profile() -> void:
 	var config := ConfigFile.new()
 	if config.load(save_path) == OK:
-		best_score = maxi(0,int(config.get_value("record","score",0)))
-		blitz_best = maxi(0,int(config.get_value("record","blitz",0)))
-		lifetime_chain = maxi(0,int(config.get_value("record","perfect_chain",0)))
+		best_score = maxi(0,int(config.get_value("record","shooter_score",0)))
+		blitz_best = maxi(0,int(config.get_value("record","shooter_blitz",0)))
 		low_effects = bool(config.get_value("settings","low_effects",false))
 		coins = maxi(0,int(config.get_value("profile","coins",0)))
 		owned_skins = [0]
@@ -1215,14 +1087,15 @@ func load_profile() -> void:
 		coins = maxi(999999,coins)
 		admin_god = bool(config.get_value("admin","god",true))
 		admin_max_start = bool(config.get_value("admin","max_start",false))
-		admin_free_deflect = bool(config.get_value("admin","free_deflect",false))
+		admin_free_skill = bool(config.get_value("admin","free_skill",config.get_value("admin","free_deflect",false)))
 	audio.enabled = sound_on
 
 func save_profile() -> void:
 	var config := ConfigFile.new()
-	config.set_value("record","score",best_score)
-	config.set_value("record","blitz",blitz_best)
-	config.set_value("record","perfect_chain",lifetime_chain)
+	config.load(save_path) # Retain legacy/unknown fields while writing the new schema.
+	config.set_value("profile","combat_version",2)
+	config.set_value("record","shooter_score",best_score)
+	config.set_value("record","shooter_blitz",blitz_best)
 	config.set_value("settings","low_effects",low_effects)
 	config.set_value("profile","coins",coins)
 	config.set_value("profile","skins",owned_skins)
@@ -1234,7 +1107,7 @@ func save_profile() -> void:
 	if admin_enabled:
 		config.set_value("admin","god",admin_god)
 		config.set_value("admin","max_start",admin_max_start)
-		config.set_value("admin","free_deflect",admin_free_deflect)
+		config.set_value("admin","free_skill",admin_free_skill)
 	config.set_value("lobby","mode",preferred_mode)
 	config.set_value("lobby","layout",preferred_layout)
 	config.set_value("lobby","stage",preferred_stage)
@@ -1298,7 +1171,6 @@ func switch_admin(enabled: bool) -> void:
 	# Load each mode's own progression. Never copy an admin record into normal play.
 	best_score = 0
 	blitz_best = 0
-	lifetime_chain = 0
 	coins = 0
 	owned_skins = [0]
 	selected_skin = 0
@@ -1345,10 +1217,10 @@ func close_admin() -> void:
 
 func show_admin_options() -> void:
 	if not admin_enabled: return
-	clear_cards("ADMIN OPTIONS","Options apply only while admin is enabled. Upgrades still use safe caps and one bullet.")
+	clear_cards("ADMIN OPTIONS","Options apply only in admin. Test all weapons and skills with bounded projectiles.")
 	add_button("GOD MODE: "+("ON" if admin_god else "OFF"),toggle_admin_option.bind("god"))
 	add_button("START MAX UPGRADES: "+("ON" if admin_max_start else "OFF"),toggle_admin_option.bind("max"))
-	add_button("NO DEFLECT COOLDOWN: "+("ON" if admin_free_deflect else "OFF"),toggle_admin_option.bind("deflect"))
+	add_button("NO SKILL COOLDOWN: "+("ON" if admin_free_skill else "OFF"),toggle_admin_option.bind("skill"))
 	add_button("BACK",show_admin)
 
 func toggle_admin_option(option: String) -> void:
@@ -1356,9 +1228,9 @@ func toggle_admin_option(option: String) -> void:
 	match option:
 		"god": admin_god = not admin_god
 		"max": admin_max_start = not admin_max_start
-		"deflect":
-			admin_free_deflect = not admin_free_deflect
-			if admin_free_deflect: cooldown = 0
+		"skill":
+			admin_free_skill = not admin_free_skill
+			if admin_free_skill: cooldown = 0
 	save_profile()
 	show_admin_options()
 
@@ -1396,14 +1268,14 @@ func admin_boss() -> void:
 	if not is_instance_valid(boss): spawn_enemy(3)
 	boss_spawned = true
 	close_admin()
-	notice("ADMIN • BULLET EATER TEST")
+	notice("ADMIN • SIEGE COMMANDER TEST")
 
 func show_enemy_lab() -> void:
 	if not admin_enabled: return
 	ensure_admin_arena()
 	clear_cards("ENEMY LAB","Paused • Spawn safely at arena edges. Repeated boss requests reuse the live boss.")
 	cards.add_theme_constant_override("separation",10)
-	var names := ["CHASER","DASHER","TANK","BULLET EATER","SHIELD GUARD","ZONE CASTER"]
+	var names := ["CHASER","DASHER","TANK","SIEGE COMMANDER","SHIELD GUARD","ZONE CASTER"]
 	for i in range(6):
 		var button := add_button("SPAWN "+names[i],admin_spawn_enemy.bind(i))
 		button.custom_minimum_size.y = 88
@@ -1438,31 +1310,29 @@ func layout_viewport(size: Vector2, safe := Vector2.ZERO) -> void:
 	var old_arena := Balance.ARENA
 	Balance.ARENA = Rect2(30,165+safe.x,660,canvas_height-425-safe.x-safe.y)
 	Geometry.PILLAR = Rect2(305,Balance.ARENA.get_center().y-132.5,110,110)
-	if is_instance_valid(bullet) and old_arena != Balance.ARENA:
+	if is_instance_valid(player_actor) and old_arena != Balance.ARENA:
 		var normalized := (player-old_arena.position)/old_arena.size
 		player = Balance.ARENA.position+normalized*Balance.ARENA.size
 		player = Geometry.resolve_all(player,18,world_obstacles())
 		player_actor.position = player
 		player_actor.reset_physics_interpolation()
-		bullet.position = bullet.position.clamp(Balance.ARENA.position+Vector2(8,8),Balance.ARENA.end-Vector2(8,8))
-		bullet.position = Geometry.resolve_all(bullet.position,7,world_obstacles())
-		bullet.trail.clear()
-		bullet.reset_physics_interpolation()
+		combat.shots.clear()
+		combat.hostile.clear()
 		for enemy in enemies:
 			enemy.position = enemy.position.clamp(Balance.ARENA.position+Vector2.ONE*enemy.radius,Balance.ARENA.end-Vector2.ONE*enemy.radius)
 			enemy.position = Geometry.resolve_all(enemy.position,enemy.radius,world_obstacles())
 			enemy.reset_physics_interpolation()
 	header_panel.position.y = 16+safe.x
 	hud.position.y = 52+safe.x
-	perfect_label.position.y = 110+safe.x
+	weapon_label.position.y = 110+safe.x
 	brand.position.y = 23+safe.x
 	health_icons.position.y = 116+safe.x
 	xp_bar.position.y = 137+safe.x
 	pause_button.position.y = 40+safe.x
 	boss_label.position.y = 169+safe.x
 	boss_bar.position.y = 198+safe.x
-	deflect_button.position = Vector2(475,canvas_height-215-safe.y)
-	deflect_button.size = Vector2(210,155)
+	skill_button.position = Vector2(475,canvas_height-215-safe.y)
+	skill_button.size = Vector2(210,155)
 	joystick_origin = Vector2(185,canvas_height-145-safe.y)
 	joystick_id = -1
 	joystick = Vector2.ZERO
@@ -1485,7 +1355,7 @@ func show_robots(index := -1) -> void:
 	cards.add_child(portrait)
 	var name_label := Label.new()
 	var rarity := "STARTER" if id == 0 else "RARE" if id in [1,5,6] else "EPIC" if id in [2,3] else "LEGENDARY"
-	name_label.text = RobotRoster.NAMES[id]+" • "+rarity+"\n"+RobotRoster.NOTES[id]
+	name_label.text = RobotRoster.NAMES[id]+" • "+rarity+"\n"+RobotRoster.NOTES[id]+"\n"+Shooter.WEAPONS[id]+" • "+Shooter.SKILLS[id]
 	name_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	name_label.add_theme_font_size_override("font_size",26)
 	name_label.add_theme_color_override("font_color",RobotRoster.COLORS[id])
@@ -1639,7 +1509,7 @@ func show_summon_results() -> void:
 func show_stage_brief(stage: int) -> void:
 	if stage < 0 or stage > 4 or (not admin_enabled and stage >= campaign_unlocked): return
 	var data: Dictionary = Campaign.data(stage)
-	clear_cards("%02d • %s" % [stage+1,data.name],"3 combat waves → %s\nBoss enters at %d seconds.\n\n%s\n\nFirst clear: 3 tickets. Repeat clear: 1 ticket. Upgrades carry across this stage's waves." % [data.boss,int(data.at),data.tip])
+	clear_cards("%02d • %s" % [stage+1,data.name],"3 combat waves → %s\nBoss enters at %d seconds.\n\n%s\n\nFirst clear: 3 tickets. Repeat: 1. Stars: clear, HP 3+, finish within 60s after boss arrival. Upgrades carry across waves." % [data.boss,int(data.at),data.tip])
 	add_button("START STAGE",start_campaign.bind(stage))
 	add_button("BACK",show_campaign)
 
@@ -1684,7 +1554,7 @@ func show_profile_menu() -> void:
 	add_button("VỀ SẢNH",show_menu)
 
 func show_about() -> void:
-	clear_cards("THÔNG TIN","LAST BULLET\nZORVYKA Games\nPhiên bản %s\nOne Shot. Endless Chaos.\n\nWASD / phím mũi tên: di chuyển\nSpace: deflect • Esc: pause\nF11: fullscreen cửa sổ desktop" % str(ProjectSettings.get_setting("application/config/version")))
+	clear_cards("THÔNG TIN","LAST BULLET\nZORVYKA Games\nPhiên bản %s\nAuto Fire. Endless Chaos.\n\nWASD / phím mũi tên: di chuyển\nSpace: kỹ năng • Esc: pause\nF11: fullscreen cửa sổ desktop" % str(ProjectSettings.get_setting("application/config/version")))
 	add_button("VỀ SẢNH",show_menu)
 
 static func full_number(value: int) -> String:
@@ -1706,8 +1576,8 @@ func show_lobby_missions() -> void:
 	state = "menu"
 	clear_cards("NHIỆM VỤ","Mỗi trận có 3 mục tiêu. Mỗi mục tiêu trả tự động 15 vàng + 1 vé, một lần/trận. Bắt đầu trận mới sẽ đặt lại tiến độ.")
 	var goals := [15,3,10]
-	var progress := [kills,perfect_count,best_combo]
-	var names := ["Hạ địch","Perfect Deflect","Chuỗi hạ địch"]
+	var progress := [kills,combat.skill_uses,best_combo]
+	var names := ["Hạ địch","Dùng kỹ năng","Chuỗi hạ địch"]
 	for i in range(3):
 		var label := Label.new()
 		label.text = "%s  %d/%d\n%s" % [names[i],mini(progress[i],goals[i]),goals[i],"ĐÃ TỰ ĐỘNG NHẬN" if mission_claimed[i] else "+15 vàng • +1 vé"]

@@ -2,11 +2,11 @@ class_name CampaignData
 extends RefCounted
 
 const STAGES := [
- {"name":"TRAINING BAY","boss":"SENTINEL","at":90.0,"color":Color("9ce9dd"),"tip":"Learn the timing. Dodge the Sentinel's marked charge.","pool":[0,0,1]},
- {"name":"REFLECTION WORKS","boss":"MIRROR WARDEN","at":105.0,"color":Color("9eb9ff"),"tip":"Bank around two pillars. Attack while the Warden's shield is down.","pool":[0,1,2,4]},
+ {"name":"TRAINING BAY","boss":"SENTINEL","at":90.0,"color":Color("9ce9dd"),"tip":"Auto-fire while moving. Dodge the marked charge and three-shot volleys.","pool":[0,0,1]},
+ {"name":"REFLECTION WORKS","boss":"MIRROR WARDEN","at":105.0,"color":Color("9eb9ff"),"tip":"Use the pillars for cover. Attack while the Warden's shield is down.","pool":[0,1,2,4]},
  {"name":"ENERGY FURNACE","boss":"FURNACE HEART","at":120.0,"color":Color("ffc18b"),"tip":"Amber tiles warn before heating. Leave the marks before they turn red.","pool":[0,1,2,5]},
- {"name":"MAGNETIC STATION","boss":"POLARIS","at":120.0,"color":Color("d9aeff"),"tip":"Magnetic coils bend the single bullet. Dodge the locked strike marks.","pool":[1,2,4,5]},
- {"name":"MACHINE CORE","boss":"CORE PRIME","at":135.0,"color":Color("ffe3a7"),"tip":"All hazards combine. Return the captured bullet; phase two adds charges.","pool":[0,1,2,4,5]}
+ {"name":"MAGNETIC STATION","boss":"POLARIS","at":120.0,"color":Color("d9aeff"),"tip":"Dodge the five-shot volleys and locked strike marks. Coils mark danger lanes.","pool":[1,2,4,5]},
+ {"name":"MACHINE CORE","boss":"CORE PRIME","at":135.0,"color":Color("ffe3a7"),"tip":"All hazards combine. Dodge fan volleys; phase two adds charges and a wider barrage.","pool":[0,1,2,4,5]}
 ]
 
 static func data(stage: int) -> Dictionary:

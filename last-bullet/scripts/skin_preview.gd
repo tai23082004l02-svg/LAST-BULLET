@@ -12,4 +12,4 @@ func _draw() -> void:
 	if actor >= 0:
 		NeonArt.hero(self,actor,Vector2(size.x*0.5,size.y*0.48),minf(size.y*0.85,actor_width),clock)
 	else:
-		PermanentBullet.draw_skin_preview(self,skin,clock)
+		BulletVisual.draw_skin_preview(self,skin,clock)

@@ -1,0 +1,1 @@
+Historical tests for the permanent-bullet/Deflect design (through v0.7). Not runnable under v0.8. Current combat checks: shooting.gd, shooter_campaign.gd and shooter_stress.gd. Preserved for reference, not counted as passing tests.

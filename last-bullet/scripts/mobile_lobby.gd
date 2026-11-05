@@ -83,7 +83,7 @@ func _ready() -> void:
 	title = label(home_view,"LAST BULLET",48,Color("ddffff"))
 	title.add_theme_font_override("font",NeonArt.title_font())
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	tagline = label(home_view,"ONE SHOT. ENDLESS CHAOS.",18,Color("6b9aaf"))
+	tagline = label(home_view,"AUTO FIRE. ENDLESS CHAOS.",18,Color("6b9aaf"))
 	tagline.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	hero_input = Control.new()
 	hero_input.mouse_filter = Control.MOUSE_FILTER_STOP

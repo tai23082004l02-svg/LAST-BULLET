@@ -1,28 +1,20 @@
-# LAST-BULLET
+# LAST-BULLET — v0.8.0
 
-**v0.7.0 — Mobile lobby, Campaign & Robot Summon**
+Robot survival shooter for portrait mobile, Godot 4 (validated 4.6.3).
 
-Mở `last-bullet/project.godot` bằng Godot 4 (đã kiểm tra trên 4.6.3).
-Robot lớn để vuốt xem, nút Chơi ngay và thanh dưới Sảnh / Robot / Summon / Ngoại hình. Admin nằm trong avatar góc trái trên.
+**Auto-aim + auto-fire**, drag anywhere except buttons to move, one robot skill button. Replaces Deflect/permanent-bullet gameplay. Seven robot weapons/skills, eight gun upgrades, five campaign bosses, Survival/cover arenas and 90-second Blitz. Existing robots, skins, summon inventory/pity and campaign progress are retained; new shooter scores stored separately.
 
-- 5 màn chiến dịch, boss riêng, sao và mở khóa.
-- Summon ×1/×10, pity, robot trùng thành mảnh và đổi robot.
-- Admin local tách tiến trình thường; x2 vàng nhận ngay, không quảng cáo.
+[Player guide](last-bullet/README.md) · [Shooter mechanics](last-bullet/docs/SHOOTER.md) · [Campaign & Summon](last-bullet/docs/CAMPAIGN_SUMMON.md) · [Tests](last-bullet/docs/TEST_RESULTS.md)
 
-## Tiếp tục ở phiên chat sau
+![v0.8 shooter](last-bullet/docs/previews/v0.8-shooter.png)
 
-Đọc [AGENTS.md](AGENTS.md) và [bàn giao trạng thái dự án](last-bullet/docs/SESSION_HANDOFF.md).
-[Quy trình Godot Android + Termux/Git trên S23 Ultra](last-bullet/docs/ANDROID_TERMUX.md).
-
-Cập nhật trên điện thoại: đóng dự án Godot, chạy trong Termux:
+Open last-bullet/project.godot. Close Godot before pull. On S23 Ultra/Termux:
 
 ```bash
 cd ~/storage/downloads/GodotProjects/LAST-BULLET
 git pull --ff-only
 ```
 
-Mở lại Godot; không cần tải ZIP/import lại. Trên PC cũng đóng Godot trước Fetch/Pull. Nếu Git báo xung đột, bảo toàn thay đổi trước khi xử lý.
+[Android/Termux setup](last-bullet/docs/ANDROID_TERMUX.md). Next chat: read [AGENTS.md](AGENTS.md) and [SESSION_HANDOFF.md](last-bullet/docs/SESSION_HANDOFF.md) first.
 
-[Hướng dẫn đầy đủ](last-bullet/README.md) · [Campaign & Summon](last-bullet/docs/CAMPAIGN_SUMMON.md) · [Kết quả kiểm tra](last-bullet/docs/TEST_RESULTS.md)
-
-![Sảnh v0.7.0](last-bullet/docs/previews/v0.7-home.png)
+Admin remains local/separate. X2 gold is immediate once/run; no ads or payments. Physical-device balance/FPS for this release is not yet verified.
