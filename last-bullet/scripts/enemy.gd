@@ -10,6 +10,7 @@ var phase := 0.0
 var dash := Vector2.ZERO
 var capture_ready := 5.0
 var flash := 0.0
+var weak_timer := 0.0
 var facing := Vector2.DOWN
 var hazard_point := Vector2.ZERO
 var hazard_clock := 0.0
@@ -27,6 +28,7 @@ func setup(type: int, wave: int) -> void:
 func advance(delta: float, player: Vector2) -> void:
 	phase += delta
 	capture_ready -= delta
+	weak_timer = maxf(0,weak_timer-delta)
 	flash = maxf(0, flash - delta)
 	var direction := (player - position).normalized()
 	if kind == 4:
@@ -48,7 +50,8 @@ func advance(delta: float, player: Vector2) -> void:
 		else:
 			position += dash * 470 * delta
 	else:
-		position += direction * speed * delta
+		if weak_timer <= 0:
+			position += direction * speed * delta
 	position = position.clamp(Balance.ARENA.position + Vector2.ONE * radius, Balance.ARENA.end - Vector2.ONE * radius)
 	queue_redraw()
 
@@ -77,7 +80,9 @@ func _draw() -> void:
 	else:
 		draw_circle(Vector2.ZERO, radius, color)
 		if kind == 3:
-			draw_circle(Vector2.ZERO, radius * 0.6, Color("071022"))
+			draw_circle(Vector2.ZERO, radius * 0.6, Color("ffe2a3") if weak_timer > 0 else Color("071022"))
+			if weak_timer > 0:
+				draw_arc(Vector2.ZERO,radius+13,0,TAU*weak_timer/3.0,40,Color("fff5c7"),5)
 			draw_arc(Vector2.ZERO, radius + 8, 0, TAU * clampf(capture_ready / 9,0,1), 32, Color("ffd17c"), 4)
 	if hp < max_hp:
 		draw_line(Vector2(-radius,-radius-10), Vector2(radius,-radius-10), Color("402639"), 4)

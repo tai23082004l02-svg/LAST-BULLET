@@ -10,6 +10,9 @@ var perfect_boost := false
 var pierce_left := 0
 var bank_charge := 0
 var skin := 0
+var return_strike := false
+var return_window := 0.0
+var effects_reduced := false
 var travel := 0.0
 var last_check := Vector2.ZERO
 var check_time := 0.0
@@ -19,6 +22,8 @@ var trail: Array[Vector2] = []
 # Only the owner creates this entity; captures and recovery reuse it.
 func advance(delta: float, game: Node2D) -> void:
 	boost = maxf(0, boost - delta)
+	return_window = maxf(0,return_window-delta)
+	if return_window <= 0: return_strike = false
 	idle += delta
 	for key in hit_cooldowns.keys():
 		hit_cooldowns[key] -= delta
@@ -32,6 +37,10 @@ func advance(delta: float, game: Node2D) -> void:
 			velocity = (game.player - position).normalized() * game.bullet_speed()
 			position += velocity.normalized() * 65
 			trail.clear()
+			return_window = 3.0
+			if is_instance_valid(game.boss):
+				game.boss.weak_timer = 3.0
+			game.notice("BOSS EXPOSED • DEFLECT BACK!")
 			game.audio.play_event("boss_warning")
 		return
 	var speed: float = game.bullet_speed() * ((1.3 if perfect_boost else 1.15) if boost > 0 else 1.0)
@@ -59,6 +68,11 @@ func advance(delta: float, game: Node2D) -> void:
 				fraction = t
 				normal = Vector2.ZERO
 				normal[axis] = -signf(motion[axis])
+		if game.arena_layout == "reflector":
+			var obstacle: Dictionary = ArenaGeometry.sweep_rect(position,motion,ArenaGeometry.PILLAR.grow(7))
+			if not obstacle.is_empty() and obstacle.fraction <= fraction:
+				fraction = obstacle.fraction
+				normal = obstacle.normal
 		for enemy in game.enemies:
 			if not is_instance_valid(enemy) or hit_cooldowns.has(enemy.get_instance_id()):
 				continue
@@ -89,7 +103,7 @@ func advance(delta: float, game: Node2D) -> void:
 		if target != null:
 			hit_cooldowns[target.get_instance_id()] = Balance.HIT_COOLDOWN
 			idle = 0
-			if target.kind == 3 and target.capture_ready <= 0:
+			if target.kind == 3 and target.capture_ready <= 0 and target.weak_timer <= 0:
 				capture = 1.1
 				target.capture_ready = 9
 				game.notice("BULLET EATER • RELEASE INCOMING")
@@ -107,12 +121,14 @@ func advance(delta: float, game: Node2D) -> void:
 			game.audio.play_event("bounce",1.0+bank_charge*0.08)
 		velocity = velocity.bounce(normal)
 		position += normal * 1.5
+	if game.arena_layout == "reflector":
+		position = ArenaGeometry.resolve(position,7)
 	position = position.clamp(Balance.ARENA.position + Vector2(8,8), Balance.ARENA.end - Vector2(8,8))
 	check_time += delta
 	travel += velocity.length() * delta
 	if check_time > 0.6:
 		if position.distance_to(last_check) < 3 and travel > 100:
-			position = Balance.ARENA.get_center()
+			position = Vector2(360,650)
 			trail.clear()
 			velocity = Vector2(0.63, -0.77) * speed
 		last_check = position
@@ -125,7 +141,7 @@ func advance(delta: float, game: Node2D) -> void:
 
 func _draw() -> void:
 	var color: Color = Balance.SKIN_COLORS[skin]
-	for i in range(1, trail.size()):
+	for i in range(1, mini(trail.size(),7 if effects_reduced else 14)):
 		var tint := color
 		tint.a = 0.65*(1.0-float(i)/14)
 		var point := trail[i]-position
@@ -134,7 +150,9 @@ func _draw() -> void:
 		draw_line(trail[i-1]-position,point,tint,6 if skin == 1 else 3)
 		if skin == 3 and i%3 == 0:
 			draw_circle(point,2,tint)
-	draw_circle(Vector2.ZERO,16,Color(color,0.15))
+	draw_circle(Vector2.ZERO,18,Color("061020"))
+	draw_circle(Vector2.ZERO,15,Color(color,0.3))
+	draw_arc(Vector2.ZERO,10,0,TAU,24,Color.WHITE,2)
 	if boost > 0 and perfect_boost:
 		draw_arc(Vector2.ZERO,12,0,TAU,20,Color.WHITE,2)
 	if skin == 3:

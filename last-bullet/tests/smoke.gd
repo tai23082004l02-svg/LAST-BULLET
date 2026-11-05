@@ -12,6 +12,7 @@ func run() -> void:
 	game.rng.seed = 42
 	seed(42)
 	game.start_run()
+	game.rng.seed = 42
 	var original = game.bullet
 	# Simulate five minutes with damage disabled; accept every level-up.
 	for frame in range(18000):

@@ -11,6 +11,25 @@ var enemies: Array[ArenaEnemy] = []
 var boss: ArenaEnemy
 var pickups: Array[Vector2] = []
 var fires: Array[Dictionary] = []
+const Geometry = preload("res://scripts/arena_geometry.gd")
+var double_claimed := false
+var run_coins := 0
+var mission_coins := 0
+var mode := "survival"
+var arena_layout := "open"
+var challenge_complete := false
+var spawn_index := 0
+var attempts := 0
+var deflect_successes := 0
+var perfect_chain := 0
+var best_perfect_chain := 0
+var lifetime_chain := 0
+var blitz_best := 0
+var previous_record := 0
+var new_record := false
+var low_effects := false
+var final_summary := ""
+
 const AudioDirector = preload("res://scripts/audio.gd")
 var audio: Node
 var upgrades: Array[int] = [0,0,0,0,0,0,0,0]
@@ -77,7 +96,7 @@ func build_ui() -> void:
 	ui.add_child(root)
 	hud = Label.new()
 	hud.position = Vector2(35,30)
-	hud.add_theme_font_size_override("font_size", 25)
+	hud.add_theme_font_size_override("font_size", 22)
 	root.add_child(hud)
 	xp_bar = ProgressBar.new()
 	xp_bar.position = Vector2(35,125)
@@ -177,8 +196,8 @@ func show_menu() -> void:
 		enemy.hide()
 	if is_instance_valid(bullet):
 		bullet.hide()
-	clear_cards("LAST BULLET", "ZORVYKA Games • v0.2.0\nOne Shot. Endless Chaos.\n\nBEST SCORE  %d" % best_score)
-	add_button("PLAY", start_run)
+	clear_cards("LAST BULLET", "ZORVYKA Games • v0.3.0\nOne Shot. Endless Chaos.\n\nBEST SCORE  %d" % best_score)
+	add_button("PLAY", show_modes)
 	add_button("HOW TO PLAY", show_help)
 	add_button("SKINS • %d COINS" % coins, show_skins)
 	add_button("SETTINGS", show_settings)
@@ -186,10 +205,33 @@ func show_menu() -> void:
 		add_button("QUIT", func(): get_tree().quit())
 
 func show_help() -> void:
-	clear_cards("ONE SHOT. YOUR CALL.", "1. Move with WASD / arrows, or drag the left joystick. Avoid coral enemies.\n\n2. Aim with movement; the arrow previews your next deflect. Press SPACE inside the outer ring. Catch an incoming bullet inside the gold ring for PERFECT!\n\n3. Collect XP, choose upgrades, complete missions for skin coins. Shields block front hits; dodge yellow marked zones. Your bullet is harmless.")
+	clear_cards("ONE SHOT. YOUR CALL.", "1. Move with WASD / arrows, or drag the left joystick. Avoid coral enemies.\n\n2. Aim with movement; the arrow previews your next deflect. Press SPACE inside the outer ring. Catch an incoming bullet inside the gold ring for PERFECT!\n\n3. Collect XP, choose upgrades, complete missions for skin coins. Shields block front hits; dodge yellow marked zones. Your bullet is harmless.\n\nPLAY offers Open, Reflector and 90-second Blitz. Chain Perfect catches for bonus points. After boss release, deflect back while its core is gold for x4 damage. Claim x2 gold instantly on results.")
 	add_button("BACK", show_menu)
 
-func start_run() -> void:
+func show_modes() -> void:
+	clear_cards("CHOOSE YOUR RUN","Open arena to learn. Reflector to experiment. Blitz for a quick score chase.")
+	add_button("SURVIVAL • OPEN",start_run.bind("survival","open"))
+	add_button("SURVIVAL • REFLECTOR",start_run.bind("survival","reflector"))
+	add_button("BLITZ • 90 SECONDS",start_run.bind("blitz","open"))
+	add_button("BACK",show_menu)
+
+func start_run(run_mode := "survival", layout := "open") -> void:
+	mode = run_mode
+	arena_layout = layout
+	double_claimed = false
+	run_coins = 0
+	mission_coins = 0
+	challenge_complete = false
+	spawn_index = 0
+	attempts = 0
+	deflect_successes = 0
+	perfect_chain = 0
+	best_perfect_chain = 0
+	new_record = false
+	if mode == "blitz":
+		rng.seed = 90300
+	else:
+		rng.randomize()
 	if is_instance_valid(bullet):
 		remove_child(bullet)
 		bullet.queue_free()
@@ -231,6 +273,7 @@ func start_run() -> void:
 	joystick = Vector2.ZERO
 	bullet = PermanentBullet.new()
 	bullet.name = "Bullet"
+	bullet.z_index = 20
 	bullet.skin = selected_skin
 	bullet.position = player + Vector2(0,-45)
 	add_child(bullet)
@@ -282,6 +325,7 @@ func _unhandled_input(event: InputEvent) -> void:
 
 func request_deflect() -> void:
 	if state == "playing" and cooldown <= 0:
+		attempts += 1
 		deflect_window = 0.22
 		cooldown = 0.65 + upgrades[7]*0.12
 		# Immediate sampling distinguishes a timed press from an early buffered catch.
@@ -303,8 +347,8 @@ func toggle_pause() -> void:
 func _physics_process(delta: float) -> void:
 	deflect_button.visible = state in ["playing","paused","upgrade"]
 	pause_button.visible = state in ["playing","paused"]
-	hud.visible = state != "menu"
-	xp_bar.visible = state != "menu"
+	hud.visible = state in ["playing","paused","upgrade"]
+	xp_bar.visible = state in ["playing","paused","upgrade"]
 	mission_label.visible = state in ["playing","paused","upgrade"]
 	toast_time = maxf(0,toast_time-delta)
 	toast.visible = toast_time > 0
@@ -312,8 +356,13 @@ func _physics_process(delta: float) -> void:
 		queue_redraw()
 		return
 	elapsed += delta
+	if mode == "blitz" and elapsed >= 90:
+		elapsed = 90
+		challenge_complete = true
+		finish_run()
+		return
 	feedback = maxf(0,feedback-delta)
-	wave = 1 + int(elapsed / 20)
+	wave = 1 + int(elapsed / (15 if mode == "blitz" else 20))
 	invulnerable = maxf(0,invulnerable-delta)
 	cooldown = maxf(0,cooldown-delta)
 	combo_timer -= delta
@@ -327,18 +376,26 @@ func _physics_process(delta: float) -> void:
 		aim = movement.normalized()
 	player += movement * Balance.PLAYER_SPEED * delta
 	player = player.clamp(Balance.ARENA.position+Vector2(18,18),Balance.ARENA.end-Vector2(18,18))
+	if arena_layout == "reflector":
+		player = Geometry.resolve(player,18)
 	if deflect_window > 0:
 		if not try_deflect(false):
 			deflect_window -= delta
 			if deflect_window <= 0:
-				notice("MISSED • CATCH IT INSIDE THE RING")
+				perfect_chain = 0
+				notice("MISSED • PERFECT CHAIN RESET")
+	bullet.effects_reduced = low_effects or enemies.size() > 24
 	bullet.advance(delta,self)
 	slow = maxf(0,slow-delta)
 	var enemy_delta := delta * (0.35 if slow > 0 else 1.0)
 	for enemy in enemies.duplicate():
 		if not is_instance_valid(enemy):
 			continue
-		enemy.advance(enemy_delta,player)
+		var target := Geometry.navigation_target(enemy.position,player,enemy.radius) if arena_layout == "reflector" and enemy.kind != 5 else player
+		enemy.advance(enemy_delta,target)
+		enemy.weak_timer = maxf(0,enemy.weak_timer-(delta-enemy_delta))
+		if arena_layout == "reflector":
+			enemy.position = Geometry.resolve(enemy.position,enemy.radius)
 		if player.distance_to(enemy.position) < enemy.radius + 17:
 			hurt_player(enemy.position)
 		if enemy.kind == 5 and enemy.hazard_active() and player.distance_to(enemy.hazard_point) < 83:
@@ -347,15 +404,21 @@ func _physics_process(delta: float) -> void:
 			return
 	spawn_timer -= delta
 	if spawn_timer <= 0:
-		spawn_timer = maxf(0.32,1.4 - wave * 0.07)
+		spawn_timer = maxf(0.32,1.4 - wave * 0.07) if mode != "blitz" else [1.2,0.95,0.8,0.7,0.6,0.5][mini(wave-1,5)]
 		if enemies.size() < Balance.MAX_ENEMIES:
 			var pool := [0]
 			if wave >= 2: pool.append(1)
 			if wave >= 3: pool.append(2)
 			if wave >= 4: pool.append(4)
 			if wave >= 5: pool.append(5)
-			spawn_enemy(pool[rng.randi_range(0,pool.size()-1)])
-	if elapsed >= 240 and not boss_spawned:
+			if mode == "blitz":
+				var formations := [[0,0,0],[0,1,0],[0,1,2],[1,0,4],[2,1,5],[4,1,2,5]]
+				var formation: Array = formations[mini(wave-1,5)]
+				spawn_enemy(formation[spawn_index%formation.size()])
+				spawn_index += 1
+			else:
+				spawn_enemy(pool[rng.randi_range(0,pool.size()-1)])
+	if mode != "blitz" and elapsed >= 240 and not boss_spawned:
 		boss_spawned = true
 		spawn_enemy(3)
 		notice("BULLET EATER HAS ARRIVED")
@@ -409,6 +472,7 @@ func nearest_enemy(point: Vector2) -> ArenaEnemy:
 func spawn_enemy(kind: int) -> void:
 	var enemy := ArenaEnemy.new()
 	enemy.setup(kind,wave)
+	enemy.phase = rng.randf_range(0,2)
 	var spawn := Vector2.ZERO
 	for attempt in range(16):
 		spawn = Vector2(rng.randf_range(90,630),rng.randf_range(225,960))
@@ -421,7 +485,7 @@ func spawn_enemy(kind: int) -> void:
 	if spawn.distance_to(player) <= 200:
 		enemy.free()
 		return
-	enemy.position = spawn
+	enemy.position = Geometry.resolve(spawn,enemy.radius) if arena_layout == "reflector" else spawn
 	add_child(enemy)
 	enemies.append(enemy)
 	if kind == 3:
@@ -433,6 +497,11 @@ func damage_enemy(enemy: ArenaEnemy, damage: float, impact := false, incoming :=
 	if enemy.kind == 4 and (not impact or enemy.blocks(incoming)):
 		audio.play_event("bounce",0.8)
 		return
+	if enemy.kind == 3 and impact and bullet.return_strike and enemy.weak_timer > 0:
+		damage *= 4
+		bullet.return_strike = false
+		notice("RETURN STRIKE • ×4 DAMAGE!")
+		audio.play_event("deflect",1.35)
 	audio.play_event("enemy_hit")
 	enemy.hp -= damage
 	enemy.flash = 0.08
@@ -492,17 +561,65 @@ func finish_run() -> void:
 	check_missions()
 	state = "results"
 	result_paid = true
-	best_score = maxi(best_score,score+int(elapsed))
+	var total := score+int(elapsed)
+	previous_record = blitz_best if mode == "blitz" else best_score
+	new_record = total > previous_record
+	if mode == "blitz":
+		blitz_best = maxi(blitz_best,total)
+	else:
+		best_score = maxi(best_score,total)
+	lifetime_chain = maxi(lifetime_chain,best_perfect_chain)
 	var reward := mini(50,int(kills/5)+int(elapsed/30))
 	coins += reward
+	run_coins = reward+mission_coins
 	save_profile()
 	audio.stop_all()
-	audio.play_event("defeat")
-	clear_cards("RUN COMPLETE", "SURVIVED  %s\nSCORE  %d  •  KILLS  %d\nBEST CHAIN  %d  •  PERFECT  %d\nRUN COINS +%d  •  WALLET %d\nMISSIONS %d/3  •  RECORD %d" % [time_text(),score+int(elapsed),kills,best_combo,perfect_count,reward,coins,mission_claimed.count(true),best_score])
-	add_button("RETRY",start_run)
+	audio.play_event("level_up" if challenge_complete else "defeat")
+	final_summary = "TIME %s  •  SCORE %d\nKILLS %d\nPERFECT %d  •  BEST STREAK %d\nDEFLECT %d/%d (%d%%)\n%s\nCOINS: run %d + missions %d = %d" % [time_text(),total,kills,perfect_count,best_perfect_chain,deflect_successes,attempts,deflect_rate(),("NEW RECORD! +%d" % (total-previous_record)) if new_record else "RECORD %d" % previous_record,reward,mission_coins,run_coins]
+	if mode == "blitz":
+		final_summary = ("FINISHED • " if challenge_complete else "TIME CHALLENGE • ")+medal(total)+"\n"+final_summary
+	for enemy in enemies: enemy.hide()
+	bullet.hide()
+	update_hud()
+	show_results()
+	run_ended.emit()
+
+func show_results() -> void:
+	state = "results"
+	clear_cards("BLITZ RESULTS" if mode == "blitz" else "RUN COMPLETE",final_summary+"\n"+next_skin_hint()+"\nWALLET %d" % coins)
+	cards.add_theme_constant_override("separation",12)
+	if run_coins > 0:
+		add_button("CLAIM X2 GOLD • +%d" % run_coins if not double_claimed else "X2 CLAIMED • +%d" % run_coins,claim_double_gold)
+		(cards.get_child(cards.get_child_count()-1) as Button).disabled = double_claimed
+	add_button("RETRY",start_run.bind(mode,arena_layout))
 	add_button("SKINS",show_skins)
 	add_button("MAIN MENU",show_menu)
-	run_ended.emit()
+
+func deflect_rate() -> int:
+	return clampi(int(round(100.0*deflect_successes/maxi(1,attempts))),0,100)
+
+func medal(total: int) -> String:
+	if total >= 3000: return "GOLD"
+	if total >= 1500: return "SILVER"
+	if total >= 600: return "BRONZE"
+	return "KEEP PRACTICING • BRONZE AT 600"
+
+func next_skin_hint() -> String:
+	for i in range(1,4):
+		if not owned_skins.has(i):
+			var missing := maxi(0,Balance.SKIN_COSTS[i]-coins)
+			return "%d coins to %s" % [missing,Balance.SKIN_NAMES[i]] if missing > 0 else "%s is ready to unlock!" % Balance.SKIN_NAMES[i]
+	return "ALL SKINS UNLOCKED • BEST PERFECT STREAK %d" % lifetime_chain
+
+func claim_double_gold() -> void:
+	# Admin build: instant claim, once per completed run. No ad provider involved.
+	if state != "results" or double_claimed or not result_paid or run_coins <= 0:
+		return
+	double_claimed = true
+	coins += run_coins
+	save_profile()
+	audio.play_event("level_up")
+	show_results()
 
 func time_text() -> String:
 	return "%02d:%02d" % [int(elapsed)/60,int(elapsed)%60]
@@ -512,7 +629,8 @@ func notice(text: String) -> void:
 	toast_time = 1.8
 
 func update_hud() -> void:
-	hud.text = "HP %d/5    %s    WAVE %d\nSCORE %d    CHAIN ×%d    LV %d" % [hp,time_text(),wave,score+int(elapsed),combo,level]
+	var clock := time_text() if mode != "blitz" else "%02d:%02d" % [int(maxf(0,90-elapsed))/60,int(maxf(0,90-elapsed))%60]
+	hud.text = "HP %d/5    %s    %s %d\nSCORE %d  •  KILL ×%d\nPERFECT ×%d  •  LV %d" % [hp,clock,"WAVE" if mode != "blitz" else "BLITZ",wave,score+int(elapsed),combo,perfect_chain,level]
 	xp_bar.max_value = xp_required()
 	xp_bar.value = xp
 	mission_label.text = "MISSIONS  Kills %d/15  •  Perfect %d/3  •  Chain %d/10" % [mini(kills,15),mini(perfect_count,3),mini(best_combo,10)]
@@ -525,12 +643,16 @@ func _draw() -> void:
 	for y in range(165,1021,55):
 		draw_line(Vector2(30,y),Vector2(690,y),Color(0.1,0.2,0.3,0.35))
 	draw_rect(Balance.ARENA,Color("355672"),false,4)
-	if state == "menu":
+	if state in ["menu","results"]:
 		return
+	if arena_layout == "reflector":
+		draw_rect(Geometry.PILLAR,Color("172b45"))
+		draw_rect(Geometry.PILLAR,Color("73c6e9"),false,4)
+		draw_line(Geometry.PILLAR.position,Geometry.PILLAR.end,Color("355672"),2)
 	for point in pickups:
-		draw_circle(point,6,Color("ffd17c"))
+		draw_circle(point,4 if low_effects else 6,Color("ffd17c"))
 	for fire in fires:
-		draw_circle(fire.p,18,Color(1,0.45,0.12,fire.ttl*0.6))
+		draw_circle(fire.p,18,Color(1,0.45,0.12,fire.ttl*(0.25 if low_effects or enemies.size()>24 else 0.6)))
 	draw_arc(player,deflect_radius(),0,TAU,64,Color(0.3,1,0.8,0.65 if cooldown <= 0 else 0.15),2)
 	draw_arc(player,Balance.PERFECT_RADIUS,0,TAU,48,Color(1,0.82,0.4,0.6),2)
 	if feedback > 0:
@@ -545,6 +667,10 @@ func _draw() -> void:
 	if invulnerable <= 0 or int(invulnerable*15)%2 == 0:
 		draw_circle(player,17,Color("8affc1"))
 		draw_line(player,player+aim*27,Color.WHITE,4)
+	if is_instance_valid(bullet) and bullet.capture <= 0 and player.distance_to(bullet.position) > 280:
+		var direction := (bullet.position-player).normalized()
+		var pointer := player+direction*125
+		draw_colored_polygon(PackedVector2Array([pointer+direction*13,pointer-direction.rotated(0.65)*10,pointer-direction.rotated(-0.65)*10]),Color("d7fdff"))
 	if is_instance_valid(bullet) and bullet.capture > 0:
 		draw_line(bullet.position,player,Color(1,0.8,0.3,0.55),5)
 	draw_circle(joystick_origin,76,Color(0.4,0.8,0.9,0.08))
@@ -558,22 +684,32 @@ func try_deflect(immediate: bool) -> bool:
 	if bullet.capture > 0 or player.distance_to(bullet.position) > deflect_radius():
 		return false
 	var incoming := bullet.velocity.dot(player-bullet.position) > 0
+	deflect_successes += 1
 	last_deflect_perfect = immediate and incoming and player.distance_to(bullet.position) <= Balance.PERFECT_RADIUS
 	bullet.velocity = aim * bullet_speed()
 	bullet.boost = 2.2 if last_deflect_perfect else 1.0
 	bullet.perfect_boost = last_deflect_perfect
 	bullet.pierce_left = upgrades[5]
 	bullet.bank_charge = 0
+	bullet.return_strike = bullet.return_window > 0
 	deflect_window = 0
 	if upgrades[3] > 0:
 		slow = 0.6+upgrades[3]*0.3
 	if last_deflect_perfect:
 		perfect_count += 1
+		perfect_chain += 1
+		best_perfect_chain = maxi(best_perfect_chain,perfect_chain)
+		if perfect_chain > lifetime_chain:
+			lifetime_chain = perfect_chain
+			save_profile()
+		score += 25*mini(perfect_chain,10)
 		feedback = 0.45
 		if haptics_on and OS.has_feature("mobile"):
 			Input.vibrate_handheld(35)
-	audio.play_event("deflect",1.2 if last_deflect_perfect else 0.9)
-	notice("PERFECT DEFLECT!" if last_deflect_perfect else "DEFLECT!")
+	else:
+		perfect_chain = 0
+	audio.play_event("deflect",minf(1.4,1.1+perfect_chain*0.04) if last_deflect_perfect else 0.9)
+	notice("PERFECT ×%d • +%d" % [perfect_chain,25*mini(perfect_chain,10)] if last_deflect_perfect else "DEFLECT!")
 	check_missions()
 	return true
 
@@ -594,6 +730,7 @@ func check_missions() -> void:
 		if not mission_claimed[i] and progress[i] >= goals[i]:
 			mission_claimed[i] = true
 			coins += 15
+			mission_coins += 15
 			save_profile()
 			audio.play_event("level_up")
 			notice("MISSION COMPLETE • +15 COINS")
@@ -602,6 +739,9 @@ func load_profile() -> void:
 	var config := ConfigFile.new()
 	if config.load(save_path) == OK:
 		best_score = maxi(0,int(config.get_value("record","score",0)))
+		blitz_best = maxi(0,int(config.get_value("record","blitz",0)))
+		lifetime_chain = maxi(0,int(config.get_value("record","perfect_chain",0)))
+		low_effects = bool(config.get_value("settings","low_effects",false))
 		coins = maxi(0,int(config.get_value("profile","coins",0)))
 		owned_skins = [0]
 		var saved: Variant = config.get_value("profile","skins",[0])
@@ -618,6 +758,9 @@ func load_profile() -> void:
 func save_profile() -> void:
 	var config := ConfigFile.new()
 	config.set_value("record","score",best_score)
+	config.set_value("record","blitz",blitz_best)
+	config.set_value("record","perfect_chain",lifetime_chain)
+	config.set_value("settings","low_effects",low_effects)
 	config.set_value("profile","coins",coins)
 	config.set_value("profile","skins",owned_skins)
 	config.set_value("profile","selected",selected_skin)
@@ -658,5 +801,6 @@ func buy_or_equip(index: int) -> void:
 func show_settings() -> void:
 	clear_cards("SETTINGS","Audio plays locally. No online services.")
 	add_button("SOUND: " + ("ON" if sound_on else "OFF"),func(): sound_on = not sound_on; audio.enabled = sound_on; audio.stop_all(); save_profile(); show_settings())
+	add_button("LOW EFFECTS: "+("ON" if low_effects else "OFF"),func(): low_effects = not low_effects; save_profile(); show_settings())
 	add_button("VIBRATION: " + ("ON" if haptics_on else "OFF"),func(): haptics_on = not haptics_on; save_profile(); show_settings())
 	add_button("BACK",show_menu)

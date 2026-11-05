@@ -1,4 +1,4 @@
-# LAST BULLET — v0.2.0
+# LAST BULLET — v0.3.0
 ZORVYKA Games • **One Shot. Endless Chaos.**
 
 Godot 4 portrait arcade survival. Exactly one permanent bullet, no external plugins or online runtime services.
@@ -9,6 +9,21 @@ Godot 4 portrait arcade survival. Exactly one permanent bullet, no external plug
 - Godot **4.6.3 Standard**: Import `last-bullet/project.godot` → **F5 → PLAY**.
 - Di chuyển: **WASD / phím mũi tên**; deflect: **Space**; pause: **Esc**.
 - Cảm ứng: kéo joystick trái và bấm **DEFLECT** bên phải. Có thể giữ joystick trong lúc bấm deflect bằng ngón còn lại.
+
+## Bản 0.3.0 — chọn chế độ và nhận x2 vàng
+**PLAY** mở ba lựa chọn: **SURVIVAL • OPEN**, **SURVIVAL • REFLECTOR**, **BLITZ • 90 SECONDS**. Retry giữ chế độ/bản đồ vừa chơi.
+
+1. **Theo dõi đạn:** lõi trắng, viền tối/halo và thứ tự vẽ trên địch. Đạn cách người chơi hơn 280px thì hiện mũi chỉ hướng nhỏ. Hitbox vẫn 7px, skin không thay đổi va chạm. Khi trên 24 địch, tự rút ngắn vệt đạn và giảm độ đậm Fire Trail; Settings có **LOW EFFECTS** để luôn giảm hiệu ứng.
+2. **Perfect streak:** Perfect liên tiếp thưởng `25 × min(streak, 10)` điểm mỗi lần, tăng cao độ âm thanh tới giới hạn. Đỡ thường hoặc bấm hụt kết thúc chuỗi; không trừ máu. HUD tách chuỗi Perfect khỏi chuỗi kill. Lưu kỷ lục chuỗi Perfect cục bộ.
+3. **Reflector:** bản đồ thử nghiệm có một cột vuông giữa sân. Cả đạn, người chơi và địch đều va chạm; địch đi vòng qua cột bằng đồ thị nhỏ của bốn góc. Nảy cột cũng tích Bank Shot. Open vẫn giữ nguyên sân trống. Sweep dùng hình chữ nhật mở rộng theo bán kính, nên góc vuông xử lý hơi bảo thủ.
+4. **Boss phản đòn:** sau khi nhả cùng viên đạn, Bullet Eater đứng yên/lộ lõi vàng trong 3 giây gameplay. Deflect viên đạn rồi đưa nó trúng boss trong cửa sổ đó để gây **x4 sát thương cho một lần trúng**. Đỡ thường cũng làm được; không bắt buộc Perfect. Va tường không mất cơ hội, nhưng hết 3 giây thì mất. Time Warp không kéo dài cửa sổ phản đòn.
+5. **Blitz 90s:** sáu giai đoạn 15 giây với mẫu địch và nhịp spawn định trước, tăng từ Chaser tới Dasher, Tank, Shield Guard, Zone Caster. Không có boss. Thời gian chỉ chạy khi đang chơi, dừng khi pause/chọn nâng cấp. 90 giây thì tự chốt kết quả nếu còn sống; chết sớm vẫn có kết quả. Huy chương theo điểm: Bronze 600, Silver 1500, Gold 3000. Kỷ lục Blitz lưu riêng Survival. Nâng cấp vẫn ngẫu nhiên; vị trí spawn còn phụ thuộc khoảng cách an toàn với người chơi.
+6. **Kết quả chi tiết:** số Perfect, chuỗi Perfect cao nhất, tỷ lệ deflect thành công trên số lần bấm hợp lệ, kỷ lục vừa phá và số vàng còn thiếu để mở skin kế tiếp. Không có lần bấm thì tỷ lệ hiển thị 0%.
+
+### Nhận x2 vàng — bản admin
+Ở màn kết quả, bấm **CLAIM X2 GOLD** để nhận ngay phần vàng cộng thêm. **Không quảng cáo, không mô phỏng quảng cáo, không đếm ngược.** Mỗi trận nhận tối đa một lần.
+
+Phần được nhân đôi là **toàn bộ vàng kiếm trong trận vừa xong**, gồm vàng nhiệm vụ đã trả trong trận và vàng kết thúc trận; không nhân đôi cả ví. Ví dụ: ví cũ 100, trận kiếm 15 từ nhiệm vụ + 5 từ kết quả → ví 120, nhận x2 → ví 140. Nút bị khóa sau khi nhận. Trận không kiếm được vàng thì không có phần thưởng x2. Rời màn kết quả hoặc đóng game trước khi nhận thì không giữ lượt nhận cũ. Tích hợp quảng cáo thật để sau, hiện không có SDK/provider quảng cáo.
 
 ## Sáu cải tiến ở bản 0.2.0
 1. **Perfect Deflect:** bấm khi đạn đang bay tới và nằm trong vòng vàng 43px. Được +2 sát thương, x1.3 tốc độ trong 2.2s; có vòng sáng, tiếng riêng với pitch cao hơn và rung ngắn trên mobile. Đỡ ở vòng ngoài là deflect thường (+1 sát thương, x1.15 tốc độ trong 1s). Bấm sớm có buffer 0.22s nhưng không được Perfect.
@@ -26,19 +41,20 @@ Dùng lại 9 mẫu local đã có trong **Game-create**; không tạo thêm m�
 ## Core rules
 - One `PermanentBullet` per run, analytic wall reflection and swept circle tests against enemies; behind-direction intersections are ignored. Per-enemy hit cooldown 0.22s, separation and same-entity unstuck recovery.
 - Bullet never hurts the player. Chaser circles, Dasher triangles, Tank squares. Contact damage gives 1.2s invulnerability.
-- Waves every 20s; safe enemy cap 48, boss can add one. Bullet Eater at 4 minutes captures and releases **the same bullet** after 1.1s. The line telegraphs its release toward the current player position.
+- Waves every 20s; safe enemy cap 48, boss can add one. Bullet Eater at 4 minutes in Survival captures and releases **the same bullet** after 1.1s, then exposes a 3s return-strike window. The line telegraphs its release toward the current player position.
 - Soft steering after 5s without bullet impact. XP attracts within 115px. Combo expires after 3s without a kill. Five-minute survival target, then continue indefinitely.
 - Eight upgrade types: original Heavy Bullet, Accelerator, Magnetic Assist, Time Warp, Fire Trail (5 stacks each); new Phase Shot, Bank Shot, Wide Catch (3 each). Time Warp slows enemies only. Shield Guard also blocks ground fire; hit its unshielded side with the bullet. All upgrades maxed: next levels heal 1 HP up to 5.
-- Save in `user://records.cfg`: best score, coins, owned/equipped skins, settings. Existing best-score saves migrate automatically. No cloud save.
+- Save in `user://records.cfg`: Survival/Blitz best scores, Perfect streak record, coins, owned/equipped skins, settings. Existing best-score saves migrate automatically. No cloud save.
 
 ## Files / tuning
 - `scenes/Main.tscn`: entry scene, UI created in code.
 - `scripts/game.gd`: run lifecycle, player/controls, waves, missions, upgrade cards, wallet/skins/settings/save.
 - `scripts/bullet.gd`: persistent projectile, sweep, boost, pierce/bank, skin rendering.
 - `scripts/enemy.gd`: enemy behaviors, shield direction, telegraphed zones and boss.
+- `scripts/arena_geometry.gd`: reflector sweep, separation and four-corner navigation.
 - `scripts/audio.gd`: bounded local audio pool, limiter and generated wall ping.
 - `scripts/balance.gd`: primary tuning constants, caps, names, skin colors/prices. Enemy stats are in `enemy.gd`; wave/XP/mission values in `game.gd`.
-- `tests/smoke.gd`, `tests/features.gd`: isolated test saves, cleaned up on success.
+- `tests/smoke.gd`, `tests/features.gd`, `tests/expansion.gd`, `tests/reflector_stress.gd`: isolated test saves, cleaned up on success.
 - `docs/TEST_RESULTS.md`: validation evidence and remaining device checks.
 
 ## Validation commands
@@ -46,6 +62,8 @@ Dùng lại 9 mẫu local đã có trong **Game-create**; không tạo thêm m�
 godot --headless --path last-bullet --editor --import --quit
 godot --headless --path last-bullet --script res://tests/features.gd
 godot --headless --path last-bullet --script res://tests/smoke.gd
+godot --headless --path last-bullet --script res://tests/expansion.gd
+godot --headless --path last-bullet --script res://tests/reflector_stress.gd
 ```
 Tested on **Godot 4.6.3.stable.official.7d41c59c4**, Linux. Tests do not alter `records.cfg`.
 
