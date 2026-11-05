@@ -2,3 +2,7 @@
 export.cfg
 export_credentials.cfg
 builds/
+
+# Documentation/concept previews are not runtime assets.
+/docs/**/*.import
+/art/concepts/**/*.import
