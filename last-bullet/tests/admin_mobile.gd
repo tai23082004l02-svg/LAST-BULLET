@@ -107,12 +107,15 @@ func run() -> void:
 	touch.position = Vector2(500,600)
 	touch.pressed = true
 	game._unhandled_input(touch)
-	assert(game.joystick_id == 2 and game.joystick == Vector2.ZERO)
+	assert(game.joystick_id == 2 and game.joystick == Vector2.ZERO and not game.joystick_dragging)
 	var drag := InputEventScreenDrag.new()
 	drag.index = 2
+	drag.position = Vector2(504,600)
+	game._unhandled_input(drag)
+	assert(game.joystick == Vector2.ZERO and not game.joystick_dragging)
 	drag.position = Vector2(570,600)
 	game._unhandled_input(drag)
-	assert(game.joystick.x == 1 and game.joystick.y == 0)
+	assert(game.joystick.x == 1 and game.joystick.y == 0 and game.joystick_dragging)
 	# Second finger cannot steal movement; GUI-consumed release still stops it.
 	touch.index = 3
 	game._unhandled_input(touch)

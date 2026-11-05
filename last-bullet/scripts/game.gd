@@ -127,6 +127,7 @@ var joystick_id := -1
 var joystick := Vector2.ZERO
 var joystick_origin := Vector2(185,1135)
 var joystick_touch_origin := Vector2.ZERO
+var joystick_dragging := false
 var ui: CanvasLayer
 var hud: Label
 var xp_bar: ProgressBar
@@ -481,22 +482,31 @@ func _unhandled_input(event: InputEvent) -> void:
 			joystick_id = event.index
 			joystick_origin = comfortable_stick_origin(pointer)
 			joystick_touch_origin = pointer
+			joystick_dragging = false
 		elif not event.pressed and event.index == joystick_id:
 			joystick_id = -1
 			joystick = Vector2.ZERO
 	if event is InputEventScreenDrag and event.index == joystick_id:
-		joystick = ((pointer - joystick_touch_origin) / 70).limit_length()
+		update_stick_drag(pointer)
 	# Mouse joystick for desktop preview; keyboard works independently.
 	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
 		if event.pressed and in_movement_zone(pointer) and joystick_id == -1:
 			joystick_id = -2
 			joystick_origin = comfortable_stick_origin(pointer)
 			joystick_touch_origin = pointer
+			joystick_dragging = false
 		elif not event.pressed and joystick_id == -2:
 			joystick_id = -1
 			joystick = Vector2.ZERO
 	if event is InputEventMouseMotion and joystick_id == -2:
-		joystick = ((pointer - joystick_touch_origin)/70).limit_length()
+		update_stick_drag(pointer)
+
+func update_stick_drag(pointer: Vector2) -> void:
+	var delta := pointer-joystick_touch_origin
+	if not joystick_dragging and delta.length() < 12:
+		return
+	joystick_dragging = true
+	joystick = (delta/70).limit_length()
 
 func in_movement_zone(pointer: Vector2) -> bool:
 	if not Rect2(0,safe_margins.x,720,canvas_height-safe_margins.x-safe_margins.y).has_point(pointer):
@@ -512,6 +522,7 @@ func comfortable_stick_origin(pointer: Vector2) -> Vector2:
 	return pointer.clamp(Vector2(80,safe_margins.x+80),Vector2(640,canvas_height-safe_margins.y-90))
 
 func reset_stick() -> void:
+	joystick_dragging = false
 	joystick_id = -1
 	joystick = Vector2.ZERO
 	joystick_origin = Vector2(185,canvas_height-safe_margins.y-145)
@@ -959,7 +970,7 @@ func _draw() -> void:
 	if is_instance_valid(bullet) and bullet.capture > 0:
 		draw_line(bullet.position,player,Color(1,0.8,0.3,0.4),3)
 	# Floating joystick appears only while dragging.
-	if joystick_id != -1 and state == "playing":
+	if joystick_id != -1 and joystick_dragging and state == "playing":
 		# Thumb controls: layered rings and a damped visual thumb cap.
 		draw_circle(joystick_origin,76,Color(0.04,0.13,0.19,0.85))
 		draw_arc(joystick_origin,76,0,TAU,64,Color(0.4,0.85,0.9,0.7),2)
