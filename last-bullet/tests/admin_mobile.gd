@@ -93,21 +93,24 @@ func run() -> void:
 	var edge: Vector2 = game.comfortable_stick_origin(Vector2(1,1599))
 	assert(edge.x >= 80 and edge.y+76 < 1568)
 	assert(game.in_movement_zone(Vector2(200,400)))
-	assert(not game.in_movement_zone(Vector2(500,400)))
-	assert(not game.in_movement_zone(Vector2(200,50)))
+	assert(game.in_movement_zone(Vector2(500,400)))
+	assert(game.in_movement_zone(Vector2(200,50)))
+	assert(not game.in_movement_zone(game.pause_button.position+game.pause_button.size/2))
+	assert(not game.in_movement_zone(game.deflect_button.position+game.deflect_button.size/2))
+	assert(not game.in_movement_zone(Vector2(200,10)))
 	game.joystick = Vector2.ONE
 	game.joystick_id = 3
 	game.reset_stick()
 	assert(game.joystick == Vector2.ZERO and game.joystick_id == -1)
 	var touch := InputEventScreenTouch.new()
 	touch.index = 2
-	touch.position = Vector2(200,600)
+	touch.position = Vector2(500,600)
 	touch.pressed = true
 	game._unhandled_input(touch)
 	assert(game.joystick_id == 2 and game.joystick == Vector2.ZERO)
 	var drag := InputEventScreenDrag.new()
 	drag.index = 2
-	drag.position = Vector2(270,600)
+	drag.position = Vector2(570,600)
 	game._unhandled_input(drag)
 	assert(game.joystick.x == 1 and game.joystick.y == 0)
 	# Second finger cannot steal movement; GUI-consumed release still stops it.

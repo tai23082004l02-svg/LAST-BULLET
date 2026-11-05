@@ -52,3 +52,7 @@ Người dùng đã clone repository, import/chạy được Godot Android và x
 ## Latest touch-control update
 
 The user requested an Archer Hunter-style hidden floating joystick after finding the bottom-left control uncomfortable on S23 Ultra. Movement now starts with a drag anywhere in the left half below the HUD. The ring is hidden while idle and shown only during touch; release stops movement. See TOUCH_CONTROLS.md. This supersedes the previous bottom-only stick placement. Automated touch/drag/second-finger/release checks pass; await user comfort feedback on device.
+
+## Correction: full-screen movement gestures
+
+The user clarified that movement must start anywhere on the screen, not just the left half. All blank screen space inside the safe area can now start the hidden floating joystick. Pause and Deflect explicitly exclude their button rectangles, and GUI buttons keep their normal event handling. Passive progress bars ignore pointer input. The ring follows touches on either side; initial touch remains the movement anchor. Existing multi-touch ownership and release behavior are preserved. Automated tests now exercise a right-side drag, both button exclusions and safe-area bounds. This supersedes left-half-only descriptions above; physical-device feel awaits user confirmation.

@@ -195,6 +195,7 @@ func build_ui() -> void:
 	perfect_label.add_theme_color_override("font_color",Color("a1f5e0"))
 	root.add_child(perfect_label)
 	xp_bar = ProgressBar.new()
+	xp_bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	xp_bar.position = Vector2(40,137)
 	xp_bar.size = Vector2(640,7)
 	xp_bar.show_percentage = false
@@ -211,6 +212,7 @@ func build_ui() -> void:
 	boss_label.add_theme_color_override("font_color",Color("ffd598"))
 	root.add_child(boss_label)
 	boss_bar = ProgressBar.new()
+	boss_bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	boss_bar.position = Vector2(180,198)
 	boss_bar.size = Vector2(360,6)
 	boss_bar.show_percentage = false
@@ -497,11 +499,17 @@ func _unhandled_input(event: InputEvent) -> void:
 		joystick = ((pointer - joystick_touch_origin)/70).limit_length()
 
 func in_movement_zone(pointer: Vector2) -> bool:
-	return pointer.x >= 0 and pointer.x < 360 and pointer.y >= Balance.ARENA.position.y and pointer.y < canvas_height-safe_margins.y
+	if not Rect2(0,safe_margins.x,720,canvas_height-safe_margins.x-safe_margins.y).has_point(pointer):
+		return false
+	# Buttons own their touches; all other screen space can start movement.
+	for button in [pause_button,deflect_button]:
+		if button.is_visible_in_tree() and Rect2(button.position,button.size).has_point(pointer):
+			return false
+	return true
 
 func comfortable_stick_origin(pointer: Vector2) -> Vector2:
 	# The ring follows the finger inside the safe play area, without clipping edges.
-	return pointer.clamp(Vector2(80,Balance.ARENA.position.y+80),Vector2(280,canvas_height-safe_margins.y-90))
+	return pointer.clamp(Vector2(80,safe_margins.x+80),Vector2(640,canvas_height-safe_margins.y-90))
 
 func reset_stick() -> void:
 	joystick_id = -1
