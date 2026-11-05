@@ -1,14 +1,28 @@
 # LAST-BULLET
 
-**v0.6.0 — Five-stage Campaign & Robot Summon**
+**v0.7.0 — Mobile lobby, Campaign & Robot Summon**
 
-Open `last-bullet/project.godot` in Godot 4.6.3 → F5. Close Godot before GitHub Desktop Fetch/Pull.
+Mở `last-bullet/project.godot` bằng Godot 4 (đã kiểm tra trên 4.6.3).
+Robot lớn để vuốt xem, nút Chơi ngay và thanh dưới Sảnh / Robot / Summon / Ngoại hình. Admin nằm trong avatar góc trái trên.
 
-- **PLAY → CAMPAIGN:** five themed arenas, three combat waves each, five illustrated bosses, stars and stage unlocks.
-- **SUMMON:** ×1/×10 ticket pulls, 75/20/5 base rates, 10/50 pity, duplicate shards and targeted exchanges. Existing owned robots stay owned.
-- **ADMIN:** all stages/robots/skins open, free summons, god mode and test labs; normal save stays separate.
-- Instant x2 gold, Survival and Blitz remain available. No payments or ads.
+- 5 màn chiến dịch, boss riêng, sao và mở khóa.
+- Summon ×1/×10, pity, robot trùng thành mảnh và đổi robot.
+- Admin local tách tiến trình thường; x2 vàng nhận ngay, không quảng cáo.
 
-[Full Campaign & Summon guide](last-bullet/docs/CAMPAIGN_SUMMON.md) · [Campaign selection](last-bullet/docs/previews/v0.6-campaign.png) · [Summon screenshot](last-bullet/docs/previews/v0.6-summon.png) · [Validation](last-bullet/docs/TEST_RESULTS.md)
+## Tiếp tục ở phiên chat sau
 
-![Machine Core gameplay](last-bullet/docs/previews/v0.6-core.png)
+Đọc [AGENTS.md](AGENTS.md) và [bàn giao trạng thái dự án](last-bullet/docs/SESSION_HANDOFF.md).
+[Quy trình Godot Android + Termux/Git trên S23 Ultra](last-bullet/docs/ANDROID_TERMUX.md).
+
+Cập nhật trên điện thoại: đóng dự án Godot, chạy trong Termux:
+
+```bash
+cd ~/storage/downloads/GodotProjects/LAST-BULLET
+git pull --ff-only
+```
+
+Mở lại Godot; không cần tải ZIP/import lại. Trên PC cũng đóng Godot trước Fetch/Pull. Nếu Git báo xung đột, bảo toàn thay đổi trước khi xử lý.
+
+[Hướng dẫn đầy đủ](last-bullet/README.md) · [Campaign & Summon](last-bullet/docs/CAMPAIGN_SUMMON.md) · [Kết quả kiểm tra](last-bullet/docs/TEST_RESULTS.md)
+
+![Sảnh v0.7.0](last-bullet/docs/previews/v0.7-home.png)
