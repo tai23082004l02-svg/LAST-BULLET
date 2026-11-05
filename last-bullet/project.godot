@@ -2,8 +2,12 @@ config_version=5
 
 [application]
 config/name="LAST BULLET"
+config/version="0.2.0"
 run/main_scene="res://scenes/Main.tscn"
 config/features=PackedStringArray("4.3", "GL Compatibility")
+
+[input_devices]
+pointing/emulate_mouse_from_touch=true
 
 [display]
 window/size/viewport_width=720

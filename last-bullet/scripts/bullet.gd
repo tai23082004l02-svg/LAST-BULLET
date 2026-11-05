@@ -6,6 +6,10 @@ var hit_cooldowns: Dictionary = {}
 var idle := 0.0
 var boost := 0.0
 var capture := 0.0
+var perfect_boost := false
+var pierce_left := 0
+var bank_charge := 0
+var skin := 0
 var travel := 0.0
 var last_check := Vector2.ZERO
 var check_time := 0.0
@@ -27,8 +31,10 @@ func advance(delta: float, game: Node2D) -> void:
 		if capture <= 0:
 			velocity = (game.player - position).normalized() * game.bullet_speed()
 			position += velocity.normalized() * 65
+			trail.clear()
+			game.audio.play_event("boss_warning")
 		return
-	var speed: float = game.bullet_speed() * (1.2 if boost > 0 else 1.0)
+	var speed: float = game.bullet_speed() * ((1.3 if perfect_boost else 1.15) if boost > 0 else 1.0)
 	if idle > 5 and not game.enemies.is_empty():
 		var target: Node2D = game.nearest_enemy(position)
 		if target != null:
@@ -64,7 +70,12 @@ func advance(delta: float, game: Node2D) -> void:
 			var discriminant := b * b - 4 * a * c
 			if a <= 0 or discriminant < 0:
 				continue
-			var t := maxf(0, (-b - sqrt(discriminant)) / (2 * a))
+			var entry := (-b - sqrt(discriminant)) / (2 * a)
+			if c > 0 and entry < 0:
+				continue # The entire intersection is behind the bullet.
+			if c <= 0 and offset.dot(motion) >= 0:
+				continue # Already overlapping, separating: do not bounce back in.
+			var t := maxf(0,entry)
 			if t <= fraction:
 				fraction = t
 				target = enemy
@@ -82,8 +93,18 @@ func advance(delta: float, game: Node2D) -> void:
 				capture = 1.1
 				target.capture_ready = 9
 				game.notice("BULLET EATER • RELEASE INCOMING")
+				game.audio.play_event("boss_warning")
 				return
-			game.damage_enemy(target, 1 + game.upgrades[0] + (1 if boost > 0 else 0))
+			var blocked: bool = target.kind == 4 and target.blocks(velocity)
+			game.damage_enemy(target, 1 + game.upgrades[0] + ((2 if perfect_boost else 1) if boost > 0 else 0) + bank_charge, true, velocity)
+			bank_charge = 0
+			if pierce_left > 0 and not blocked:
+				pierce_left -= 1
+				position += velocity.normalized()*1.5
+				continue
+		else:
+			bank_charge = mini(game.upgrades[6],bank_charge+1)
+			game.audio.play_event("bounce",1.0+bank_charge*0.08)
 		velocity = velocity.bounce(normal)
 		position += normal * 1.5
 	position = position.clamp(Balance.ARENA.position + Vector2(8,8), Balance.ARENA.end - Vector2(8,8))
@@ -92,6 +113,7 @@ func advance(delta: float, game: Node2D) -> void:
 	if check_time > 0.6:
 		if position.distance_to(last_check) < 3 and travel > 100:
 			position = Balance.ARENA.get_center()
+			trail.clear()
 			velocity = Vector2(0.63, -0.77) * speed
 		last_check = position
 		check_time = 0
@@ -102,8 +124,37 @@ func advance(delta: float, game: Node2D) -> void:
 	queue_redraw()
 
 func _draw() -> void:
+	var color: Color = Balance.SKIN_COLORS[skin]
 	for i in range(1, trail.size()):
-		draw_line(trail[i-1] - position, trail[i] - position, Color(0.1,0.9,1, 0.5 * (1.0-float(i)/14)), 4)
-	draw_circle(Vector2.ZERO, 13, Color(0.1,0.9,1,0.15))
-	draw_circle(Vector2.ZERO, 7, Color(0.4,1,1))
-	draw_circle(Vector2(-2,-2), 2, Color.WHITE)
+		var tint := color
+		tint.a = 0.65*(1.0-float(i)/14)
+		var point := trail[i]-position
+		if skin == 2:
+			point += Vector2(0,4 if i%2 == 0 else -4)
+		draw_line(trail[i-1]-position,point,tint,6 if skin == 1 else 3)
+		if skin == 3 and i%3 == 0:
+			draw_circle(point,2,tint)
+	draw_circle(Vector2.ZERO,16,Color(color,0.15))
+	if boost > 0 and perfect_boost:
+		draw_arc(Vector2.ZERO,12,0,TAU,20,Color.WHITE,2)
+	if skin == 3:
+		var star := PackedVector2Array()
+		for i in range(10):
+			star.append(Vector2.from_angle(-PI/2+i*PI/5)*(10 if i%2 == 0 else 4))
+		draw_colored_polygon(star,color)
+	elif skin == 2:
+		draw_colored_polygon(PackedVector2Array([Vector2(0,-10),Vector2(8,0),Vector2(0,10),Vector2(-8,0)]),color)
+	else:
+		draw_circle(Vector2.ZERO,7,color)
+	draw_circle(Vector2.ZERO,3,Color.WHITE)
+
+static func draw_skin_preview(canvas: Control, index: int) -> void:
+	var color: Color = Balance.SKIN_COLORS[index]
+	for i in range(12):
+		var point := Vector2(190+i*10,15)
+		if index == 2: point.y += 4 if i%2 == 0 else -4
+		canvas.draw_circle(point,2+i*0.3,Color(color,float(i+1)/12))
+	canvas.draw_circle(Vector2(320,15),8,color)
+	if index == 3:
+		canvas.draw_line(Vector2(320,2),Vector2(320,28),color,2)
+		canvas.draw_line(Vector2(307,15),Vector2(333,15),color,2)

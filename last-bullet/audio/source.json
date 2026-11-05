@@ -1,0 +1,115 @@
+{
+  "provider": "ElevenLabs Sound Effects v3",
+  "source_manifest": "https://github.com/tai23082004l02-svg/Live-Youtube-American/blob/main/art/audio/swarm-survivor/library-20261105/manifest.json",
+  "note": "Reused samples; no generation requested for LAST BULLET. Original generation metadata follows.",
+  "profiles": {
+    "ui_click": {
+      "gain_db": -0.06,
+      "resource": "res://audio/library/ui_click.tres",
+      "kind": "sfx",
+      "duration": 0.48,
+      "source_duration": 0.48,
+      "source_peak_db": -11.94,
+      "source_rms_db": -35.46,
+      "original_sha256": "b1e5ba46e27dae3de12b4d879e5589a923516bc2300d34cb7e921c869bd84deb",
+      "api_cost_header": 5,
+      "loop": false
+    },
+    "xp_pickup": {
+      "gain_db": -7.21,
+      "resource": "res://audio/library/xp_pickup.tres",
+      "kind": "sfx",
+      "duration": 0.48,
+      "source_duration": 0.48,
+      "source_peak_db": -11.84,
+      "source_rms_db": -28.79,
+      "original_sha256": "b6dd74b84c271562c9551f5c9ff683ecac3c22321a7afe466c76a6cced9b91c5",
+      "api_cost_header": 5,
+      "loop": false
+    },
+    "level_up": {
+      "gain_db": -8.19,
+      "resource": "res://audio/library/level_up.tres",
+      "kind": "sfx",
+      "duration": 1,
+      "source_duration": 1,
+      "source_peak_db": -7.12,
+      "source_rms_db": -21.81,
+      "original_sha256": "fc62e5c874fe32cb992b4bb3c41f107cc7e672f3f523108770652563eafafb6f",
+      "api_cost_header": 10,
+      "loop": false
+    },
+    "player_hit": {
+      "gain_db": -3.14,
+      "resource": "res://audio/library/player_hit.tres",
+      "kind": "sfx",
+      "duration": 0.48,
+      "source_duration": 0.48,
+      "source_peak_db": -5.26,
+      "source_rms_db": -20.86,
+      "original_sha256": "c4d49f25068c133a25add49f5e25bd9270dcf5184514c1f3937800dbbbbc26f3",
+      "api_cost_header": 5,
+      "loop": false
+    },
+    "enemy_hit": {
+      "gain_db": -17.29,
+      "resource": "res://audio/library/enemy_hit.tres",
+      "kind": "sfx",
+      "duration": 0.48,
+      "source_duration": 0.48,
+      "source_peak_db": -2.1,
+      "source_rms_db": -16.71,
+      "original_sha256": "56440a2455a0d2c2896882175955458763a1043ed79b6fdcb9e7137d32b04223",
+      "api_cost_header": 5,
+      "loop": false
+    },
+    "enemy_death": {
+      "gain_db": 0.02,
+      "resource": "res://audio/library/enemy_death.tres",
+      "kind": "sfx",
+      "duration": 0.48,
+      "source_duration": 0.48,
+      "source_peak_db": -15.83,
+      "source_rms_db": -34.02,
+      "original_sha256": "7f5f740de2f5a47b140e52fd72c44943a1752f73e02548e977d6e445b67b2824",
+      "api_cost_header": 5,
+      "loop": false
+    },
+    "boss_warning": {
+      "gain_db": -4.29,
+      "resource": "res://audio/library/boss_warning.tres",
+      "kind": "sfx",
+      "duration": 0.48,
+      "source_duration": 0.48,
+      "source_peak_db": -13.2,
+      "source_rms_db": -25.71,
+      "original_sha256": "72ff9d0b440db2b392c6a74a02746262ab1109b4df735148d756e7f175e153a7",
+      "api_cost_header": 5,
+      "loop": false
+    },
+    "defeat": {
+      "gain_db": 8.35,
+      "resource": "res://audio/library/defeat.tres",
+      "kind": "sfx",
+      "duration": 1,
+      "source_duration": 1,
+      "source_peak_db": -16.35,
+      "source_rms_db": -33.94,
+      "original_sha256": "997e80ac60562cd1ea0c1d16e0cdea3c2ccdcd1071ae11fa422c7896e02fd4db",
+      "api_cost_header": 10,
+      "loop": false
+    },
+    "lightning": {
+      "gain_db": 1.75,
+      "resource": "res://audio/library/lightning.tres",
+      "kind": "sfx",
+      "duration": 0.6,
+      "source_duration": 0.6,
+      "source_peak_db": -14.57,
+      "source_rms_db": -31.75,
+      "original_sha256": "c15e73ef1e189c102d3164c8df298b6d44c10e29a82cb0fe2a8ada95194d7e3f",
+      "api_cost_header": 6,
+      "loop": false
+    }
+  }
+}
