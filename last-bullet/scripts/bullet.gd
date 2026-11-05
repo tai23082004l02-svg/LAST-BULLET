@@ -13,6 +13,7 @@ var skin := 0
 var return_strike := false
 var return_window := 0.0
 var effects_reduced := false
+var visual_clock := 0.0
 var travel := 0.0
 var last_check := Vector2.ZERO
 var check_time := 0.0
@@ -21,6 +22,7 @@ var trail: Array[Vector2] = []
 # Continuous swept circle tests against enemies and exact arena planes.
 # Only the owner creates this entity; captures and recovery reuse it.
 func advance(delta: float, game: Node2D) -> void:
+	visual_clock += delta
 	boost = maxf(0, boost - delta)
 	return_window = maxf(0,return_window-delta)
 	if return_window <= 0: return_strike = false
@@ -30,6 +32,8 @@ func advance(delta: float, game: Node2D) -> void:
 		if hit_cooldowns[key] <= 0:
 			hit_cooldowns.erase(key)
 	if capture > 0:
+		trail.clear()
+		queue_redraw()
 		capture -= delta
 		if is_instance_valid(game.boss):
 			position = game.boss.position
@@ -105,6 +109,8 @@ func advance(delta: float, game: Node2D) -> void:
 			idle = 0
 			if target.kind == 3 and target.capture_ready <= 0 and target.weak_timer <= 0:
 				capture = 1.1
+				trail.clear()
+				queue_redraw()
 				target.capture_ready = 9
 				game.notice("BULLET EATER • RELEASE INCOMING")
 				game.audio.play_event("boss_warning")
@@ -119,6 +125,7 @@ func advance(delta: float, game: Node2D) -> void:
 		else:
 			bank_charge = mini(game.upgrades[6],bank_charge+1)
 			game.audio.play_event("bounce",1.0+bank_charge*0.08)
+			game.effects.burst(position,Balance.SKIN_COLORS[skin],"hit",normal)
 		velocity = velocity.bounce(normal)
 		position += normal * 1.5
 	if game.arena_layout == "reflector":
@@ -141,38 +148,47 @@ func advance(delta: float, game: Node2D) -> void:
 
 func _draw() -> void:
 	var color: Color = Balance.SKIN_COLORS[skin]
-	for i in range(1, mini(trail.size(),7 if effects_reduced else 14)):
-		var tint := color
-		tint.a = 0.65*(1.0-float(i)/14)
-		var point := trail[i]-position
+	var count := mini(trail.size(),7 if effects_reduced else 14)
+	for i in range(1,count):
+		var alpha := 1.0-float(i)/maxi(count,1)
+		var end := trail[i]-position
+		var start := trail[i-1]-position
+		if start.distance_squared_to(end) < 0.01: continue
+		var sideways := (start-end).normalized().orthogonal()
+		var width := (6 if skin == 1 else 4)*alpha
 		if skin == 2:
-			point += Vector2(0,4 if i%2 == 0 else -4)
-		draw_line(trail[i-1]-position,point,tint,6 if skin == 1 else 3)
-		if skin == 3 and i%3 == 0:
-			draw_circle(point,2,tint)
-	draw_circle(Vector2.ZERO,18,Color("061020"))
-	draw_circle(Vector2.ZERO,15,Color(color,0.3))
-	draw_arc(Vector2.ZERO,10,0,TAU,24,Color.WHITE,2)
-	if boost > 0 and perfect_boost:
-		draw_arc(Vector2.ZERO,12,0,TAU,20,Color.WHITE,2)
-	if skin == 3:
+			end += sideways*sin(i*2.7+visual_clock*12)*3
+		var tint := Color(color,alpha*0.65)
+		draw_colored_polygon(PackedVector2Array([start+sideways*(width+1),start-sideways*(width+1),end-sideways*width,end+sideways*width]),tint)
+		if not effects_reduced:
+			draw_line(start,end,Color(color,alpha*0.12),width*3+1)
+		if skin == 3 and i%4 == 0:
+			draw_line(end-Vector2(0,2),end+Vector2(0,2),Color(color,alpha),1)
+	draw_core(self,Vector2.ZERO,skin,visual_clock,boost>0 and perfect_boost)
+
+static func draw_core(canvas: CanvasItem, point: Vector2, index: int, clock: float, powered := false) -> void:
+	var color: Color = Balance.SKIN_COLORS[index]
+	canvas.draw_circle(point,13,Color(0.01,0.04,0.07,0.8))
+	NeonArt.glow(canvas,point,7,color)
+	if index == 3:
 		var star := PackedVector2Array()
 		for i in range(10):
-			star.append(Vector2.from_angle(-PI/2+i*PI/5)*(10 if i%2 == 0 else 4))
-		draw_colored_polygon(star,color)
-	elif skin == 2:
-		draw_colored_polygon(PackedVector2Array([Vector2(0,-10),Vector2(8,0),Vector2(0,10),Vector2(-8,0)]),color)
+			star.append(point+Vector2.from_angle(-PI/2+i*PI/5+clock*0.5)*(10 if i%2 == 0 else 4))
+		canvas.draw_colored_polygon(star,color)
+	elif index == 2:
+		canvas.draw_colored_polygon(PackedVector2Array([point+Vector2(0,-10),point+Vector2(8,0),point+Vector2(0,10),point+Vector2(-8,0)]),color)
 	else:
-		draw_circle(Vector2.ZERO,7,color)
-	draw_circle(Vector2.ZERO,3,Color.WHITE)
+		canvas.draw_circle(point,8,color)
+	canvas.draw_circle(point,5,Color("f4ffff"))
+	canvas.draw_circle(point-Vector2(1,1),2,Color.WHITE)
+	if powered:
+		canvas.draw_arc(point,14,clock*2,clock*2+PI*1.4,24,Color("fff0ad"),2)
 
-static func draw_skin_preview(canvas: Control, index: int) -> void:
+static func draw_skin_preview(canvas: Control, index: int, clock := 0.0) -> void:
 	var color: Color = Balance.SKIN_COLORS[index]
-	for i in range(12):
-		var point := Vector2(190+i*10,15)
-		if index == 2: point.y += 4 if i%2 == 0 else -4
-		canvas.draw_circle(point,2+i*0.3,Color(color,float(i+1)/12))
-	canvas.draw_circle(Vector2(320,15),8,color)
-	if index == 3:
-		canvas.draw_line(Vector2(320,2),Vector2(320,28),color,2)
-		canvas.draw_line(Vector2(307,15),Vector2(333,15),color,2)
+	var center := Vector2(canvas.size.x*0.5+40,12)
+	for i in range(20):
+		var point := center-Vector2(i*5,sin(float(i)*0.3+clock*2)*4)
+		if index == 2: point.y += sin(i*2.0+clock*8)*3
+		canvas.draw_circle(point,maxf(1,5.0-float(i)*0.23),Color(color,(1-float(i)/20)*0.7))
+	draw_core(canvas,center,index,clock)

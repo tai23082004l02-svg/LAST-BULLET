@@ -1,3 +1,19 @@
+# v0.4.0 validation — 2026-11-05
+
+Engine: **Godot 4.6.3.stable.official.7d41c59c4**, Linux; OpenGL Compatibility / Mesa llvmpipe for rendered checks.
+
+- New PNG assets import and scripts compile without missing resources/parse errors.
+- Existing features, five-minute survival, expansion (Blitz/boss/x2) and five-minute high-speed Reflector stress pass after the art integration. All keep stable single-bullet identity and prior wallet/skin behavior.
+- New `tests/graphics.gd`: all 8 atlas regions valid, shared backing texture/cache; repeated menu/skins/settings lifecycle has stable node count; effect caps 80/24, expiration and retry cleanup; effects create no gameplay bullet; interpolation enabled; actor/effects hidden on results.
+- Rendered menu, mode select, gameplay, all enemy types, boss/exposure, upgrade icons, results, skins and settings reviewed in 450×800 window. New screenshots are in `docs/previews/`. New app icon is configured; no Android package was built.
+- `docs/previews/v0.4-motion.mp4`: 481 frames at fixed 60 FPS, 450×800, offline Godot Movie Maker art preview. Scripted movement, invulnerability and skin changes are used to review motion; no claim of real-time phone FPS. Audio is disabled in this visual-only preview.
+- Software-renderer VSync support warning is expected in the virtual display. No gameplay script errors were observed in these rendered checks.
+- Runtime visual effects are capped, share atlas textures and use Compatibility rendering. Physical Android FPS, heat/battery, touch, vibration, speaker listening, APK export and notch/safe-area behavior remain untested.
+
+All tests use their own temporary profile files, not `records.cfg`. The approved concept PNG is retained as reference; the new screenshots are from the implemented game.
+
+---
+
 # v0.3.0 validation — 2026-11-05
 
 Engine: **Godot 4.6.3.stable.official.7d41c59c4**, Linux. Same physical-device/audio-listening limitations as below.

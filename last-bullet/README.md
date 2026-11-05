@@ -1,7 +1,21 @@
-# LAST BULLET — v0.3.0
+# LAST BULLET — v0.4.0
 ZORVYKA Games • **One Shot. Endless Chaos.**
 
 Godot 4 portrait arcade survival. Exactly one permanent bullet, no external plugins or online runtime services.
+
+## v0.4.0 — Neon Arcade art update
+- Full illustrated robot roster: mint hero, Chaser, Dasher, Tank, Shield Guard, Zone Caster, Bullet Eater and reflector pillar. Art follows the approved Neon Arcade concept.
+- Painted navy metal arena with cyan frame, gold danger accents, new app icon and beveled neon panels/buttons. Upgrade cards have individual icons; HUD includes health pips, XP and boss phase/health.
+- Idle/walk sway, hover, spawn-in, shield animation, dash telegraph, boss core pulse, hit flash, kill fragments, bounce sparks, Perfect ring bursts, animated skin previews and tapered skin trails.
+- Physics interpolation for moving actors/bullet; time-based UI transitions and lean/hover animation. Cosmetic rendering is separate from gameplay collision. Bullet remains exactly one; visual halos/robot limbs do not enlarge hitboxes.
+- One sprite atlas shared by all robots, cached regions, linear mipmap filtering, simple Compatibility rendering, bounded FX renderer (80 events / 24 in low-effects mode). Crowded scenes shorten trails and reduce fire opacity. No full-screen bloom or per-spark nodes.
+
+### See the real build
+[Gameplay screenshot](docs/previews/v0.4-arena.png) · [Boss screenshot](docs/previews/v0.4-boss.png) · [Menu screenshot](docs/previews/v0.4-menu.png) · **[Download 8-second motion preview](docs/previews/v0.4-motion.mp4)**
+
+The video is an offline 60-fps scripted art preview recorded from Godot at 450×800, with invulnerability and automatic movement/skin changes. It is not a phone performance benchmark or a claim of 60-fps performance on Android.
+
+**Run/update:** GitHub Desktop → Fetch origin → Pull origin → Godot 4.6.3 → F5. Let the editor import the new PNG files before Play. Game rules, save compatibility and instant admin x2 reward remain available.
 
 ## Chạy game / lấy bản mới
 - GitHub Desktop: **Fetch origin → Pull origin**, mở Godot.
@@ -52,9 +66,11 @@ Dùng lại 9 mẫu local đã có trong **Game-create**; không tạo thêm m�
 - `scripts/bullet.gd`: persistent projectile, sweep, boost, pierce/bank, skin rendering.
 - `scripts/enemy.gd`: enemy behaviors, shield direction, telegraphed zones and boss.
 - `scripts/arena_geometry.gd`: reflector sweep, separation and four-corner navigation.
+- `art/neon/`: illustrated art, atlas region helper, import settings and provenance.
+- `scripts/player_visual.gd`, `scripts/skin_preview.gd`, `scripts/visual_effects.gd`: cosmetic animation and capped feedback rendering.
 - `scripts/audio.gd`: bounded local audio pool, limiter and generated wall ping.
 - `scripts/balance.gd`: primary tuning constants, caps, names, skin colors/prices. Enemy stats are in `enemy.gd`; wave/XP/mission values in `game.gd`.
-- `tests/smoke.gd`, `tests/features.gd`, `tests/expansion.gd`, `tests/reflector_stress.gd`: isolated test saves, cleaned up on success.
+- `tests/smoke.gd`, `tests/features.gd`, `tests/expansion.gd`, `tests/reflector_stress.gd`, `tests/graphics.gd`: isolated test saves, cleaned up on success.
 - `docs/TEST_RESULTS.md`: validation evidence and remaining device checks.
 
 ## Validation commands
@@ -64,6 +80,7 @@ godot --headless --path last-bullet --script res://tests/features.gd
 godot --headless --path last-bullet --script res://tests/smoke.gd
 godot --headless --path last-bullet --script res://tests/expansion.gd
 godot --headless --path last-bullet --script res://tests/reflector_stress.gd
+godot --headless --path last-bullet --script res://tests/graphics.gd
 ```
 Tested on **Godot 4.6.3.stable.official.7d41c59c4**, Linux. Tests do not alter `records.cfg`.
 
@@ -71,9 +88,9 @@ Tested on **Godot 4.6.3.stable.official.7d41c59c4**, Linux. Tests do not alter `
 1. Install matching Godot 4.6.3 export templates: **Editor → Manage Export Templates**.
 2. Install OpenJDK 17 and Android SDK per Godot's Android export guide. Configure **Editor Settings → Export → Android → Java SDK Path / Android SDK Path**.
 3. **Project → Export → Add Android**; set a package name such as `com.zorvyka.lastbullet`, version and your debug keystore. Portrait is configured in the project. Use arm64-v8a for modern phones.
-4. Export a debug APK or use one-click deploy with USB debugging.
+4. Export a debug APK or use one-click deploy with USB debugging. For release, exclude `docs/` and `art/concepts/` from export; those are review materials, not runtime assets.
 
 No APK/signing credentials included. Android export, physical multi-touch, vibration, speaker balance and phone performance are **not yet tested**.
 
 ## Remaining limitations
-Primitive art and prototype balance. No notch/safe-area adaptation or gamepad support. The bullet sweep samples enemy positions once per tick, so relative-motion sweeps may be useful at extreme speeds. Cosmetic trail/effects and damage zones are capped; XP pickups capped at 180. No ads, IAP, accounts, analytics, multiplayer or leaderboards.
+Prototype balance; robot movement uses procedural pose/hover/sway rather than frame-by-frame directional animation. No notch/safe-area adaptation or gamepad support. The bullet sweep samples enemy positions once per tick, so relative-motion sweeps may be useful at extreme speeds. Cosmetic trail/effects and damage zones are capped; XP pickups capped at 180. No ads, IAP, accounts, analytics, multiplayer or leaderboards.

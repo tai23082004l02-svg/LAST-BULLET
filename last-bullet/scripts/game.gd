@@ -11,6 +11,20 @@ var enemies: Array[ArenaEnemy] = []
 var boss: ArenaEnemy
 var pickups: Array[Vector2] = []
 var fires: Array[Dictionary] = []
+const FX = preload("res://scripts/visual_effects.gd")
+const Preview = preload("res://scripts/skin_preview.gd")
+var effects: Node2D
+var player_actor: Node2D
+var visual_clock := 0.0
+var move_clock := 0.0
+var player_lean := 0.0
+var player_moving := 0.0
+var boss_label: Label
+var boss_bar: ProgressBar
+var header_panel: Panel
+var brand: Label
+var health_icons: Control
+
 const Geometry = preload("res://scripts/arena_geometry.gd")
 var double_claimed := false
 var run_coins := 0
@@ -84,6 +98,13 @@ func _ready() -> void:
 	audio = AudioDirector.new()
 	add_child(audio)
 	load_profile()
+	effects = FX.new()
+	effects.z_index = 12
+	add_child(effects)
+	player_actor = load("res://scripts/player_visual.gd").new()
+	player_actor.z_index = 5
+	add_child(player_actor)
+	texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
 	build_ui()
 	show_menu()
 
@@ -95,29 +116,69 @@ func build_ui() -> void:
 	root.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	ui.add_child(root)
 	hud = Label.new()
-	hud.position = Vector2(35,30)
-	hud.add_theme_font_size_override("font_size", 22)
+	hud.position = Vector2(42,55)
+	hud.add_theme_font_size_override("font_size", 18)
+	header_panel = Panel.new()
+	header_panel.position = Vector2(25,16)
+	header_panel.size = Vector2(670,133)
+	header_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	header_panel.add_theme_stylebox_override("panel",NeonArt.panel(Color("0c1c2e"),Color("2b697d"),18))
+	root.add_child(header_panel)
+	brand = Label.new()
+	brand.text = "LAST BULLET"
+	brand.position = Vector2(42,23)
+	brand.add_theme_font_size_override("font_size",24)
+	brand.add_theme_font_override("font",NeonArt.title_font())
+	brand.add_theme_color_override("font_color",Color("d0fcff"))
+	root.add_child(brand)
+	health_icons = Control.new()
+	health_icons.position = Vector2(525,116)
+	health_icons.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	health_icons.draw.connect(func():
+		for i in range(5): NeonArt.heart(health_icons,Vector2(i*26,0),i<hp))
+	root.add_child(health_icons)
 	root.add_child(hud)
 	xp_bar = ProgressBar.new()
-	xp_bar.position = Vector2(35,125)
-	xp_bar.size = Vector2(650,14)
+	xp_bar.position = Vector2(40,137)
+	xp_bar.size = Vector2(640,7)
 	xp_bar.show_percentage = false
+	xp_bar.add_theme_font_size_override("font_size",1)
+	xp_bar.add_theme_stylebox_override("background",NeonArt.panel(Color("071322"),Color("1e4558"),4))
+	xp_bar.add_theme_stylebox_override("fill",NeonArt.panel(Color("66e5dd"),Color("b6fff6"),4))
 	root.add_child(xp_bar)
+	boss_label = Label.new()
+	boss_label.position = Vector2(145,169)
+	boss_label.size = Vector2(430,22)
+	boss_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	boss_label.add_theme_font_size_override("font_size",16)
+	boss_label.add_theme_stylebox_override("normal",NeonArt.panel(Color("0c1828"),Color("583e31"),6))
+	boss_label.add_theme_color_override("font_color",Color("ffd598"))
+	root.add_child(boss_label)
+	boss_bar = ProgressBar.new()
+	boss_bar.position = Vector2(180,198)
+	boss_bar.size = Vector2(360,6)
+	boss_bar.show_percentage = false
+	boss_bar.add_theme_font_size_override("font_size",1)
+	boss_bar.add_theme_stylebox_override("background",NeonArt.panel(Color("211b29"),Color("4f3544"),3))
+	boss_bar.add_theme_stylebox_override("fill",NeonArt.panel(Color("f7b069"),Color("ffe0ac"),3))
+	root.add_child(boss_bar)
 	pause_button = Button.new()
 	pause_button.text = "Ⅱ"
 	pause_button.focus_mode = Control.FOCUS_NONE
-	pause_button.position = Vector2(614,30)
-	pause_button.size = Vector2(70,65)
+	pause_button.position = Vector2(615,40)
+	pause_button.size = Vector2(58,58)
 	pause_button.pressed.connect(toggle_pause)
+	NeonArt.style_button(pause_button)
 	root.add_child(pause_button)
 	var deflect := Button.new()
 	deflect_button = deflect
 	deflect.focus_mode = Control.FOCUS_NONE
 	deflect.text = "DEFLECT\nSPACE"
-	deflect.position = Vector2(505,1060)
-	deflect.size = Vector2(175,155)
+	deflect.position = Vector2(495,1070)
+	deflect.size = Vector2(190,145)
 	deflect.add_theme_font_size_override("font_size",24)
 	deflect.button_down.connect(request_deflect)
+	NeonArt.style_button(deflect,Color("7fffe1"),true)
 	root.add_child(deflect)
 	toast = Label.new()
 	toast.position = Vector2(40,955)
@@ -129,10 +190,12 @@ func build_ui() -> void:
 	overlay.position = Vector2(65,190)
 	overlay.size = Vector2(590,820)
 	var panel_style := StyleBoxFlat.new()
-	panel_style.bg_color = Color("101d32")
-	panel_style.border_color = Color("355672")
+	panel_style.bg_color = Color("0d1e31")
+	panel_style.border_color = Color("4c8c9d")
 	panel_style.set_border_width_all(2)
-	panel_style.set_corner_radius_all(16)
+	panel_style.set_corner_radius_all(22)
+	panel_style.shadow_color = Color(0,0,0,0.6)
+	panel_style.shadow_size = 18
 	overlay.add_theme_stylebox_override("panel",panel_style)
 	root.add_child(overlay)
 	var margins := MarginContainer.new()
@@ -158,10 +221,19 @@ func clear_cards(title: String, subtitle: String) -> void:
 		child.queue_free()
 	cards.add_theme_constant_override("separation",20)
 	overlay.show()
+	if overlay.has_meta("fade"):
+		var old: Tween = overlay.get_meta("fade")
+		if old != null and old.is_valid(): old.kill()
+	overlay.modulate.a = 0
+	var fade := overlay.create_tween()
+	fade.tween_property(overlay,"modulate:a",1.0,0.16)
+	overlay.set_meta("fade",fade)
 	(cards.get_parent() as ScrollContainer).set_deferred("scroll_vertical",0)
 	var label := Label.new()
 	label.text = title
-	label.add_theme_font_size_override("font_size",32)
+	label.add_theme_font_size_override("font_size",40 if title == "LAST BULLET" else 32)
+	label.add_theme_font_override("font",NeonArt.title_font())
+	label.add_theme_color_override("font_color",Color("d9fbff"))
 	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	cards.add_child(label)
 	var description := Label.new()
@@ -170,24 +242,30 @@ func clear_cards(title: String, subtitle: String) -> void:
 	description.add_theme_font_size_override("font_size",23)
 	cards.add_child(description)
 
-func add_button(text: String, callback: Callable) -> void:
+func add_button(text: String, callback: Callable) -> Button:
 	var button := Button.new()
 	button.text = text
 	button.focus_mode = Control.FOCUS_NONE
 	button.custom_minimum_size = Vector2(510,78)
-	var style := StyleBoxFlat.new()
-	style.bg_color = Color("1a304c")
-	style.border_color = Color("3b647c")
-	style.set_border_width_all(1)
-	style.set_corner_radius_all(10)
-	button.add_theme_stylebox_override("normal",style)
-	var hover := style.duplicate() as StyleBoxFlat
-	hover.bg_color = Color("284c66")
-	button.add_theme_stylebox_override("hover",hover)
-	button.add_theme_stylebox_override("pressed",hover)
+	NeonArt.style_button(button,Color("73e6de"),text in ["PLAY","RETRY"] or text.begins_with("CLAIM"))
+	button.mouse_entered.connect(func(): animate_button(button,1.012))
+	button.mouse_exited.connect(func(): animate_button(button,1.0))
+	button.button_down.connect(func(): animate_button(button,0.985))
+	button.button_up.connect(func(): animate_button(button,1.0))
 	button.add_theme_font_size_override("font_size",24)
 	button.pressed.connect(func(): audio.play_event("ui_click"); callback.call())
 	cards.add_child(button)
+	return button
+
+func animate_button(button: Button, target: float) -> void:
+	if button.has_meta("motion"):
+		var old: Tween = button.get_meta("motion")
+		if old != null and old.is_valid(): old.kill()
+	button.pivot_offset = button.size*0.5
+	var motion := button.create_tween()
+	motion.set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+	motion.tween_property(button,"scale",Vector2.ONE*target,0.1)
+	button.set_meta("motion",motion)
 
 func show_menu() -> void:
 	state = "menu"
@@ -196,13 +274,21 @@ func show_menu() -> void:
 		enemy.hide()
 	if is_instance_valid(bullet):
 		bullet.hide()
-	clear_cards("LAST BULLET", "ZORVYKA Games • v0.3.0\nOne Shot. Endless Chaos.\n\nBEST SCORE  %d" % best_score)
+	clear_cards("LAST BULLET", "ZORVYKA Games • v0.4.0\nOne Shot. Endless Chaos.\nBEST SCORE %d" % best_score)
+	cards.add_theme_constant_override("separation",12)
+	var mascot := Preview.new()
+	mascot.actor = 0
+	mascot.custom_minimum_size = Vector2(500,100)
+	cards.add_child(mascot)
+	cards.move_child(mascot,1)
 	add_button("PLAY", show_modes)
 	add_button("HOW TO PLAY", show_help)
 	add_button("SKINS • %d COINS" % coins, show_skins)
 	add_button("SETTINGS", show_settings)
 	if not OS.has_feature("mobile"):
 		add_button("QUIT", func(): get_tree().quit())
+	for child in cards.get_children():
+		if child is Button: child.custom_minimum_size.y = 64
 
 func show_help() -> void:
 	clear_cards("ONE SHOT. YOUR CALL.", "1. Move with WASD / arrows, or drag the left joystick. Avoid coral enemies.\n\n2. Aim with movement; the arrow previews your next deflect. Press SPACE inside the outer ring. Catch an incoming bullet inside the gold ring for PERFECT!\n\n3. Collect XP, choose upgrades, complete missions for skin coins. Shields block front hits; dodge yellow marked zones. Your bullet is harmless.\n\nPLAY offers Open, Reflector and 90-second Blitz. Chain Perfect catches for bonus points. After boss release, deflect back while its core is gold for x4 damage. Claim x2 gold instantly on results.")
@@ -216,6 +302,9 @@ func show_modes() -> void:
 	add_button("BACK",show_menu)
 
 func start_run(run_mode := "survival", layout := "open") -> void:
+	effects.effects.clear()
+	move_clock = 0
+	player_lean = 0
 	mode = run_mode
 	arena_layout = layout
 	double_claimed = false
@@ -252,6 +341,13 @@ func start_run(run_mode := "survival", layout := "open") -> void:
 	offered_upgrades.clear()
 	audio.stop_all()
 	player = Vector2(360,650)
+	player_actor.position = player
+	player_actor.moving = 0
+	player_actor.lean = 0
+	player_actor.target_lean = 0
+	player_actor.flash = 0
+	player_actor.clock = 0
+	player_actor.reset_physics_interpolation()
 	aim = Vector2.UP
 	elapsed = 0
 	wave = 1
@@ -274,9 +370,11 @@ func start_run(run_mode := "survival", layout := "open") -> void:
 	bullet = PermanentBullet.new()
 	bullet.name = "Bullet"
 	bullet.z_index = 20
+	bullet.physics_interpolation_mode = Node.PHYSICS_INTERPOLATION_MODE_ON
 	bullet.skin = selected_skin
 	bullet.position = player + Vector2(0,-45)
 	add_child(bullet)
+	bullet.reset_physics_interpolation()
 	state = "playing"
 	update_hud()
 	overlay.hide()
@@ -350,11 +448,26 @@ func _physics_process(delta: float) -> void:
 	hud.visible = state in ["playing","paused","upgrade"]
 	xp_bar.visible = state in ["playing","paused","upgrade"]
 	mission_label.visible = state in ["playing","paused","upgrade"]
+	var playing_ui := state in ["playing","paused","upgrade"]
+	player_actor.visible = playing_ui and (invulnerable <= 0 or int(invulnerable*15)%2 == 0)
+	header_panel.visible = playing_ui
+	brand.visible = playing_ui
+	health_icons.visible = playing_ui
+	health_icons.queue_redraw()
+	effects.visible = playing_ui
+	boss_label.visible = playing_ui and is_instance_valid(boss)
+	boss_bar.visible = boss_label.visible
+	if boss_label.visible:
+		boss_label.text = "BULLET EATER • " + ("EXPOSED • RETURN ×4" if boss.weak_timer > 0 else "CAPTURING" if bullet.capture > 0 else "HUNTING")
+		boss_bar.max_value = boss.max_hp
+		boss_bar.value = boss.hp
 	toast_time = maxf(0,toast_time-delta)
 	toast.visible = toast_time > 0
 	if state != "playing":
 		queue_redraw()
 		return
+	effects.reduced = low_effects or enemies.size()>24
+	effects.advance(delta)
 	elapsed += delta
 	if mode == "blitz" and elapsed >= 90:
 		elapsed = 90
@@ -372,6 +485,9 @@ func _physics_process(delta: float) -> void:
 	if joystick.length() > 0.1:
 		movement = joystick
 	movement = movement.limit_length()
+	player_moving = movement.length()
+	move_clock += delta*(10 if player_moving > 0.1 else 2)
+	player_lean = lerpf(player_lean,movement.x*0.12,1-exp(-delta*12))
 	if movement.length() > 0.1:
 		aim = movement.normalized()
 	player += movement * Balance.PLAYER_SPEED * delta
@@ -384,6 +500,10 @@ func _physics_process(delta: float) -> void:
 			if deflect_window <= 0:
 				perfect_chain = 0
 				notice("MISSED • PERFECT CHAIN RESET")
+	player_actor.position = player
+	player_actor.moving = player_moving
+	player_actor.target_lean = player_lean
+	player_actor.flash = maxf(0,invulnerable-1.1)*0.8 if invulnerable <= 1.2 else 0.0
 	bullet.effects_reduced = low_effects or enemies.size() > 24
 	bullet.advance(delta,self)
 	slow = maxf(0,slow-delta)
@@ -429,6 +549,7 @@ func _physics_process(delta: float) -> void:
 			pickups[i] = pickups[i].move_toward(player,delta*430)
 		if distance < 24:
 			pickups.remove_at(i)
+			effects.burst(player,Color("ffd68f"),"pickup")
 			xp += 1
 			audio.play_event("xp_pickup")
 	fire_timer -= delta
@@ -487,6 +608,8 @@ func spawn_enemy(kind: int) -> void:
 		return
 	enemy.position = Geometry.resolve(spawn,enemy.radius) if arena_layout == "reflector" else spawn
 	add_child(enemy)
+	enemy.physics_interpolation_mode = Node.PHYSICS_INTERPOLATION_MODE_ON
+	enemy.reset_physics_interpolation()
 	enemies.append(enemy)
 	if kind == 3:
 		boss = enemy
@@ -503,10 +626,12 @@ func damage_enemy(enemy: ArenaEnemy, damage: float, impact := false, incoming :=
 		notice("RETURN STRIKE • ×4 DAMAGE!")
 		audio.play_event("deflect",1.35)
 	audio.play_event("enemy_hit")
+	effects.burst(enemy.position,Color("ffc39a"),"hit",incoming)
 	enemy.hp -= damage
 	enemy.flash = 0.08
 	if enemy.hp > 0:
 		return
+	effects.burst(enemy.position,Color("ffac82"),"death")
 	combo += 1
 	combo_timer = Balance.COMBO_WINDOW
 	best_combo = maxi(combo,best_combo)
@@ -545,7 +670,20 @@ func show_upgrades() -> void:
 		offered_upgrades.append(available[i])
 	for i in range(mini(3,available.size())):
 		var index := available[i]
-		add_button("%s [%d/%d]\n%s" % [Balance.UPGRADE_NAMES[index],upgrades[index],Balance.UPGRADE_CAPS[index],Balance.UPGRADE_INFO[index]],choose_upgrade.bind(index))
+		var card := add_button("%s [%d/%d]\n%s" % [Balance.UPGRADE_NAMES[index],upgrades[index],Balance.UPGRADE_CAPS[index],Balance.UPGRADE_INFO[index]],choose_upgrade.bind(index))
+		card.add_theme_font_size_override("font_size",21)
+		card.alignment = HORIZONTAL_ALIGNMENT_LEFT
+		for style_name in ["normal","hover","pressed","disabled"]:
+			var style := card.get_theme_stylebox(style_name).duplicate() as StyleBoxFlat
+			style.content_margin_left = 70
+			style.content_margin_right = 12
+			card.add_theme_stylebox_override(style_name,style)
+		var icon := Control.new()
+		icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		icon.position = Vector2(30,39)
+		icon.draw.connect(func(): NeonArt.icon(index,Vector2.ZERO,icon))
+		card.add_child(icon)
+		card.add_theme_constant_override("outline_size",2)
 
 func choose_upgrade(index: int) -> void:
 	if state != "upgrade" or not offered_upgrades.has(index):
@@ -636,46 +774,54 @@ func update_hud() -> void:
 	mission_label.text = "MISSIONS  Kills %d/15  •  Perfect %d/3  •  Chain %d/10" % [mini(kills,15),mini(perfect_count,3),mini(best_combo,10)]
 	deflect_button.text = "DEFLECT\n" + ("READY" if cooldown <= 0 else "%.1fs" % cooldown)
 
+func _process(delta: float) -> void:
+	visual_clock += delta
+	queue_redraw()
+
 func _draw() -> void:
-	draw_rect(Balance.ARENA,Color("0b1930"))
-	for x in range(30,691,55):
-		draw_line(Vector2(x,165),Vector2(x,1020),Color(0.1,0.2,0.3,0.35))
-	for y in range(165,1021,55):
-		draw_line(Vector2(30,y),Vector2(690,y),Color(0.1,0.2,0.3,0.35))
-	draw_rect(Balance.ARENA,Color("355672"),false,4)
+	draw_texture_rect(NeonArt.FLOOR,Balance.ARENA,false)
 	if state in ["menu","results"]:
+		draw_rect(Rect2(0,0,720,1280),Color(0.01,0.02,0.05,0.3))
 		return
 	if arena_layout == "reflector":
-		draw_rect(Geometry.PILLAR,Color("172b45"))
-		draw_rect(Geometry.PILLAR,Color("73c6e9"),false,4)
-		draw_line(Geometry.PILLAR.position,Geometry.PILLAR.end,Color("355672"),2)
+		var pillar := Geometry.PILLAR
+		draw_texture_rect(NeonArt.texture(7),Rect2(pillar.position-Vector2(4,6),pillar.size+Vector2(8,12)),false)
 	for point in pickups:
-		draw_circle(point,4 if low_effects else 6,Color("ffd17c"))
+		if not low_effects: NeonArt.glow(self,point,4,Color("ffc777"))
+		NeonArt.diamond(self,point,6,Color("ffd38c"))
 	for fire in fires:
-		draw_circle(fire.p,18,Color(1,0.45,0.12,fire.ttl*(0.25 if low_effects or enemies.size()>24 else 0.6)))
-	draw_arc(player,deflect_radius(),0,TAU,64,Color(0.3,1,0.8,0.65 if cooldown <= 0 else 0.15),2)
-	draw_arc(player,Balance.PERFECT_RADIUS,0,TAU,48,Color(1,0.82,0.4,0.6),2)
-	if feedback > 0:
-		draw_arc(player,45+(0.45-feedback)*180,0,TAU,48,Color(1,0.85,0.4,feedback*2),5)
+		var alpha: float = fire.ttl*(0.2 if low_effects or enemies.size()>24 else 0.4)
+		draw_circle(fire.p,15,Color(1,0.45,0.12,alpha))
+		draw_arc(fire.p,8,0,TAU,12,Color(1,0.7,0.2,alpha),2)
+	var ready := cooldown <= 0
+	draw_arc(player,deflect_radius(),0,TAU,64,Color(0.3,1,0.8,0.55 if ready else 0.13),1.5)
+	draw_arc(player,Balance.PERFECT_RADIUS,0,TAU,48,Color(1,0.82,0.4,0.6),1.5)
+	if not ready:
+		var progress := 1-cooldown/(0.65+upgrades[7]*0.12)
+		draw_arc(player,deflect_radius(),-PI/2,-PI/2+TAU*progress,48,Color(0.5,1,0.9,0.6),2.5)
 	if is_instance_valid(bullet) and bullet.capture <= 0 and player.distance_to(bullet.position) < deflect_radius()+80:
-		var end := player + aim*145
-		draw_line(player+aim*25,end,Color("b5ffe6"),4)
-		draw_line(end,end-aim.rotated(0.5)*24,Color("b5ffe6"),4)
-		draw_line(end,end-aim.rotated(-0.5)*24,Color("b5ffe6"),4)
+		var end := player+aim*145
+		draw_line(player+aim*27,end,Color(0.6,1,0.85,0.7),3)
+		draw_colored_polygon(PackedVector2Array([end+aim*5,end-aim.rotated(0.5)*22,end-aim.rotated(-0.5)*22]),Color("a4ffe0"))
 	if deflect_window > 0:
-		draw_arc(player,deflect_radius()-8,0,TAU,64,Color.WHITE,5)
-	if invulnerable <= 0 or int(invulnerable*15)%2 == 0:
-		draw_circle(player,17,Color("8affc1"))
-		draw_line(player,player+aim*27,Color.WHITE,4)
+		draw_arc(player,deflect_radius()-8,0,TAU,64,Color.WHITE,3)
 	if is_instance_valid(bullet) and bullet.capture <= 0 and player.distance_to(bullet.position) > 280:
 		var direction := (bullet.position-player).normalized()
 		var pointer := player+direction*125
 		draw_colored_polygon(PackedVector2Array([pointer+direction*13,pointer-direction.rotated(0.65)*10,pointer-direction.rotated(-0.65)*10]),Color("d7fdff"))
 	if is_instance_valid(bullet) and bullet.capture > 0:
-		draw_line(bullet.position,player,Color(1,0.8,0.3,0.55),5)
-	draw_circle(joystick_origin,76,Color(0.4,0.8,0.9,0.08))
-	draw_arc(joystick_origin,76,0,TAU,48,Color(0.4,0.8,0.9,0.4),2)
-	draw_circle(joystick_origin+joystick*55,28,Color(0.4,0.9,0.85,0.5))
+		draw_line(bullet.position,player,Color(1,0.8,0.3,0.4),3)
+	# Thumb controls: layered rings and a damped visual thumb cap.
+	draw_circle(joystick_origin,76,Color(0.04,0.13,0.19,0.85))
+	draw_arc(joystick_origin,76,0,TAU,64,Color(0.4,0.85,0.9,0.7),2)
+	draw_arc(joystick_origin,69,0,TAU,64,Color(0.3,0.65,0.75,0.25),2)
+	for i in range(4):
+		var direction := Vector2.from_angle(i*PI/2)
+		draw_line(joystick_origin+direction*59-direction.orthogonal()*4,joystick_origin+direction*63,Color(0.4,0.8,0.85,0.5),2)
+		draw_line(joystick_origin+direction*63,joystick_origin+direction*59+direction.orthogonal()*4,Color(0.4,0.8,0.85,0.5),2)
+	var thumb := joystick_origin+joystick*48
+	draw_circle(thumb,29,Color("173e4b"))
+	draw_arc(thumb,29,0,TAU,40,Color("60b9c3"),2)
 
 func deflect_radius() -> float:
 	return Balance.DEFLECT_RADIUS + upgrades[7]*18
@@ -704,6 +850,7 @@ func try_deflect(immediate: bool) -> bool:
 			save_profile()
 		score += 25*mini(perfect_chain,10)
 		feedback = 0.45
+		effects.burst(player,Color("ffe6a3"),"perfect")
 		if haptics_on and OS.has_feature("mobile"):
 			Input.vibrate_handheld(35)
 	else:
@@ -720,6 +867,7 @@ func hurt_player(source: Vector2) -> void:
 	invulnerable = 1.2
 	player = (player+(player-source).normalized()*35).clamp(Balance.ARENA.position+Vector2(18,18),Balance.ARENA.end-Vector2(18,18))
 	audio.play_event("player_hit")
+	effects.burst(player,Color("93ffe0"),"hit")
 	if hp <= 0:
 		finish_run()
 
@@ -780,10 +928,9 @@ func show_skins() -> void:
 		button.add_theme_color_override("font_color",Balance.SKIN_COLORS[i])
 		button.add_theme_color_override("font_disabled_color",Balance.SKIN_COLORS[i].darkened(0.2))
 		button.disabled = selected_skin == i or (not owned_skins.has(i) and coins < Balance.SKIN_COSTS[i])
-		var preview := Control.new()
+		var preview := Preview.new()
+		preview.skin = i
 		preview.custom_minimum_size = Vector2(500,24)
-		preview.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		preview.draw.connect(func(): PermanentBullet.draw_skin_preview(preview,i))
 		cards.add_child(preview)
 	add_button("BACK",show_menu)
 

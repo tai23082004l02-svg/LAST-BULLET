@@ -12,4 +12,4 @@ Mở [PNG gốc](last-bullet-neon-arcade-v1.png), chọn **Download raw file** �
 - Cột phản xạ kim loại, khiên vàng, vùng nguy hiểm dễ đọc.
 - HUD gọn, joystick trái, nút Deflect lớn bên phải.
 
-Đây là ảnh concept được tạo bằng AI để duyệt phong cách trước khi làm bộ sprite, hoạt ảnh và UI trong Godot. Các thông số, số tim, tỷ lệ và vị trí trong ảnh là minh họa mỹ thuật. Phiên bản game hiện tại vẫn là v0.3.0.
+Đây là ảnh concept được tạo bằng AI để duyệt phong cách trước khi làm bộ sprite, hoạt ảnh và UI trong Godot. Các thông số, số tim, tỷ lệ và vị trí trong ảnh là minh họa mỹ thuật. Hướng mỹ thuật đã được triển khai trong v0.4.0. Xem [ảnh chụp game thực tế](../../docs/previews/v0.4-arena.png) và [video chuyển động](../../docs/previews/v0.4-motion.mp4).
