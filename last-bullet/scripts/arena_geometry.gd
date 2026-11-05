@@ -2,7 +2,7 @@ class_name ArenaGeometry
 extends RefCounted
 
 # Static central reflector. Expanded slab sweep is conservative at rounded corners.
-const PILLAR := Rect2(305,460,110,110)
+static var PILLAR := Rect2(305,460,110,110)
 
 static func sweep_rect(origin: Vector2, motion: Vector2, box: Rect2) -> Dictionary:
 	var enter := -INF

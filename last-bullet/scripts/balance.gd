@@ -1,7 +1,7 @@
 class_name Balance
 extends RefCounted
 
-const ARENA := Rect2(30, 165, 660, 855)
+static var ARENA := Rect2(30, 165, 660, 855)
 const PLAYER_SPEED := 290.0
 const BULLET_SPEED := 560.0
 const MAX_BULLET_SPEED := 950.0

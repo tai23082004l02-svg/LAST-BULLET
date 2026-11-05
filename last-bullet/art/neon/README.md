@@ -15,3 +15,6 @@ Animations are time-based procedural idle/hover/lean, spawn scale, hit flash and
 FX use one bounded renderer (80 events normally, 24 reduced), not extra physical bullets. Rendering targets Godot Compatibility without full-screen postprocessing. Device profiling remains necessary before mobile release.
 
 Preview screenshots and the 8-second scripted Godot motion recording are under `../../docs/previews/`.
+
+## v0.5.0 player roster
+`heroes.png` is a new 1536×1024 RGBA sheet, 3×2: Volt, Frost, Ember, Nova, Cobalt, Scout. AI-generated to match Aegis; original pixels preserved. `robot_roster.gd` defines shared atlas regions, display names/colors, normal unlock prices and cosmetic descriptions. Admin unlocks all seven pilots. Player visuals use the selected atlas region with the same pose animation and physics body.

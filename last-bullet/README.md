@@ -1,7 +1,34 @@
-# LAST BULLET — v0.4.0
+# LAST BULLET — v0.5.0
 ZORVYKA Games • **One Shot. Endless Chaos.**
 
 Godot 4 portrait arcade survival. Exactly one permanent bullet, no external plugins or online runtime services.
+
+## v0.5.0 — Admin, mobile layout và 7 robot
+
+### Bật admin của bạn
+**Menu → ADMIN → ENABLE ADMIN • UNLOCK ALL**. Lựa chọn này được nhớ khi mở lại game.
+
+- Mở miễn phí **toàn bộ 7 robot và 4 skin đạn**, có 999.999 vàng test.
+- **TEST OPTIONS**: bất tử (mặc định bật), bắt đầu với mọi nâng cấp tối đa, bỏ hồi chiêu deflect. Các tùy chọn có thể bật/tắt riêng.
+- **UPGRADE LAB**: thử từng cấp của cả 8 nâng cấp, MAX ALL / CLEAR ALL. Game dừng trong lúc chỉnh. Nếu mở từ menu, tạo sân test mới rồi bấm Resume để chơi.
+- **START BOSS TEST / SUMMON BOSS**, **ENEMY LAB**: gọi nhanh từng loại địch và boss; vẫn giữ một viên đạn, một boss và giới hạn số địch.
+- Trong trận: **Pause → ADMIN TOOLS**. Trong bảng nâng cấp dài, cuộn để xem các nút cuối.
+- **RETURN TO NORMAL MODE** ở bảng admin ngoài trận để quay lại tiến trình chơi thường.
+
+Tiến trình thường dùng `user://records.cfg`; admin dùng `user://records-admin.cfg`; trạng thái chọn chế độ dùng `user://records-mode.cfg`. Điểm, vàng, skin và robot ở admin không ghi đè tiến trình thường. Đây là công cụ admin local cho bản test, không phải tài khoản/quyền máy chủ.
+
+### Robot Hangar
+**Menu → ROBOTS → PREV / NEXT → EQUIP**. Có 6 robot mới bên cạnh Aegis: **Volt, Frost, Ember, Nova, Cobalt, Scout**. Mỗi mẫu có sprite/giáp riêng và cùng hoạt ảnh; tất cả cùng máu, tốc độ và hitbox.
+
+Trong admin tất cả miễn phí. Chơi thường: Aegis miễn phí; Volt 40, Frost 70, Ember 100, Nova 140, Cobalt 180, Scout 220 xu. Mua một lần, equip không trừ thêm xu; lưu robot và quyền sở hữu riêng theo profile. Save cũ bắt đầu với Aegis.
+
+### Hiển thị điện thoại
+- Cửa sổ desktop mặc định **540×960** thay cho 450×800; **F11** đổi fullscreen khi chạy cửa sổ game riêng.
+- Chữ/menu và vùng bấm lớn hơn; nút chính cao 96px logic (~48px khi viewport rộng 360px).
+- Canvas tự giãn trên màn hình dài 18:9/20:9: đấu trường cao hơn, cột ở vị trí tương ứng, joystick/deflect neo đáy, UI chừa safe area trên mobile. Robot vẫn giữ đúng tỷ lệ; desktop rộng thì nội dung dọc đặt giữa.
+- Nếu game vẫn nhỏ trong tab **Game** nhúng của Godot, tăng mức zoom **1.0×** ở thanh trên hoặc chạy game trong cửa sổ riêng. Zoom của trình xem nhúng là cài đặt editor trên máy bạn, không phải kích thước hiển thị trên điện thoại.
+
+Chưa test trên điện thoại thật. Đã render và xem bố cục 360×640, 360×800, 540×960; safe-area/resize được kiểm tra bằng dữ liệu mô phỏng.
 
 ## v0.4.0 — Neon Arcade art update
 - Full illustrated robot roster: mint hero, Chaser, Dasher, Tank, Shield Guard, Zone Caster, Bullet Eater and reflector pillar. Art follows the approved Neon Arcade concept.
@@ -70,7 +97,7 @@ Dùng lại 9 mẫu local đã có trong **Game-create**; không tạo thêm m�
 - `scripts/player_visual.gd`, `scripts/skin_preview.gd`, `scripts/visual_effects.gd`: cosmetic animation and capped feedback rendering.
 - `scripts/audio.gd`: bounded local audio pool, limiter and generated wall ping.
 - `scripts/balance.gd`: primary tuning constants, caps, names, skin colors/prices. Enemy stats are in `enemy.gd`; wave/XP/mission values in `game.gd`.
-- `tests/smoke.gd`, `tests/features.gd`, `tests/expansion.gd`, `tests/reflector_stress.gd`, `tests/graphics.gd`: isolated test saves, cleaned up on success.
+- `tests/smoke.gd`, `tests/features.gd`, `tests/expansion.gd`, `tests/reflector_stress.gd`, `tests/graphics.gd`, `tests/admin_mobile.gd`, `tests/robots.gd`: isolated test saves, cleaned up on success.
 - `docs/TEST_RESULTS.md`: validation evidence and remaining device checks.
 
 ## Validation commands
@@ -81,6 +108,8 @@ godot --headless --path last-bullet --script res://tests/smoke.gd
 godot --headless --path last-bullet --script res://tests/expansion.gd
 godot --headless --path last-bullet --script res://tests/reflector_stress.gd
 godot --headless --path last-bullet --script res://tests/graphics.gd
+godot --headless --path last-bullet --script res://tests/admin_mobile.gd
+godot --headless --path last-bullet --script res://tests/robots.gd
 ```
 Tested on **Godot 4.6.3.stable.official.7d41c59c4**, Linux. Tests do not alter `records.cfg`.
 
@@ -93,4 +122,4 @@ Tested on **Godot 4.6.3.stable.official.7d41c59c4**, Linux. Tests do not alter `
 No APK/signing credentials included. Android export, physical multi-touch, vibration, speaker balance and phone performance are **not yet tested**.
 
 ## Remaining limitations
-Prototype balance; robot movement uses procedural pose/hover/sway rather than frame-by-frame directional animation. No notch/safe-area adaptation or gamepad support. The bullet sweep samples enemy positions once per tick, so relative-motion sweeps may be useful at extreme speeds. Cosmetic trail/effects and damage zones are capped; XP pickups capped at 180. No ads, IAP, accounts, analytics, multiplayer or leaderboards.
+Prototype balance; robot movement uses procedural pose/hover/sway rather than frame-by-frame directional animation. Safe-area adaptation is implemented but needs physical-device validation; gamepad support is not implemented. The bullet sweep samples enemy positions once per tick, so relative-motion sweeps may be useful at extreme speeds. Cosmetic trail/effects and damage zones are capped; XP pickups capped at 180. No ads, IAP, accounts, analytics, multiplayer or leaderboards.

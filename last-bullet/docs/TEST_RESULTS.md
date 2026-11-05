@@ -1,3 +1,16 @@
+# v0.5.0 validation — 2026-11-05
+
+Engine: **Godot 4.6.3**, Linux Compatibility renderer. No Android hardware test.
+
+- Existing 5 test suites pass: controls/skins/wallet, five-minute survival, expansion/Blitz/boss/x2, Reflector stress, atlas/FX/menu lifecycle.
+- `tests/admin_mobile.gd`: admin activation, 4 free skins, god mode, no cooldown, max-start and per-upgrade lab controls, enemy/boss cap, one bullet, paused tools, persisted mode/options, separate admin profile, restored normal wallet/record/owned skins after switching back. Adaptive 720×1600 logical layout with simulated 40/32 safe margins, footer/modal bounds, centered wide layout and shrink back to baseline.
+- `tests/robots.gd`: 7 characters, six valid atlas regions, insufficient funds rejected, purchase paid once, ownership/equip saved, every admin character free, unchanged HP and single bullet, normal robot collection restored after admin.
+- Actual rendered screenshots inspected at 540×960, 360×800 and 360×640: admin/options/upgrade lab, robot hangar, enlarged main buttons, tall arena/footer and two-line HUD plus Perfect row. Long lab lists intentionally scroll.
+- Mobile display-safe-area uses the platform safe rectangle. This branch is covered with simulated margins only; physical notch/navigation bars, touch scaling and orientation remain to test on real devices.
+- Robot additions are cosmetic, using a second shared atlas and the same interpolated player actor. Existing collision sizes are unchanged.
+
+---
+
 # v0.4.0 validation — 2026-11-05
 
 Engine: **Godot 4.6.3.stable.official.7d41c59c4**, Linux; OpenGL Compatibility / Mesa llvmpipe for rendered checks.

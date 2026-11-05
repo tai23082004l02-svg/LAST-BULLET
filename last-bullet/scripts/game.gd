@@ -24,6 +24,8 @@ var boss_bar: ProgressBar
 var header_panel: Panel
 var brand: Label
 var health_icons: Control
+var horizontal_padding := 0.0
+var canvas_height := 1280.0
 
 const Geometry = preload("res://scripts/arena_geometry.gd")
 var double_claimed := false
@@ -43,6 +45,16 @@ var previous_record := 0
 var new_record := false
 var low_effects := false
 var final_summary := ""
+var selected_robot := 0
+var owned_robots: Array[int] = [0]
+var robot_gallery_index := 0
+var perfect_label: Label
+var admin_enabled := false
+var normal_save_path := ""
+var admin_context := false
+var admin_god := true
+var admin_max_start := false
+var admin_free_deflect := false
 
 const AudioDirector = preload("res://scripts/audio.gd")
 var audio: Node
@@ -97,6 +109,11 @@ func _ready() -> void:
 	rng.randomize()
 	audio = AudioDirector.new()
 	add_child(audio)
+	normal_save_path = save_path
+	var mode_config := ConfigFile.new()
+	if mode_config.load(profile_mode_path()) == OK:
+		admin_enabled = bool(mode_config.get_value("mode","admin",false))
+	if admin_enabled: save_path = admin_profile_path()
 	load_profile()
 	effects = FX.new()
 	effects.z_index = 12
@@ -106,6 +123,8 @@ func _ready() -> void:
 	add_child(player_actor)
 	texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
 	build_ui()
+	get_viewport().size_changed.connect(on_viewport_changed)
+	on_viewport_changed()
 	show_menu()
 
 func build_ui() -> void:
@@ -116,8 +135,8 @@ func build_ui() -> void:
 	root.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	ui.add_child(root)
 	hud = Label.new()
-	hud.position = Vector2(42,55)
-	hud.add_theme_font_size_override("font_size", 18)
+	hud.position = Vector2(42,52)
+	hud.add_theme_font_size_override("font_size", 22)
 	header_panel = Panel.new()
 	header_panel.position = Vector2(25,16)
 	header_panel.size = Vector2(670,133)
@@ -138,6 +157,11 @@ func build_ui() -> void:
 		for i in range(5): NeonArt.heart(health_icons,Vector2(i*26,0),i<hp))
 	root.add_child(health_icons)
 	root.add_child(hud)
+	perfect_label = Label.new()
+	perfect_label.position = Vector2(42,110)
+	perfect_label.add_theme_font_size_override("font_size",20)
+	perfect_label.add_theme_color_override("font_color",Color("a1f5e0"))
+	root.add_child(perfect_label)
 	xp_bar = ProgressBar.new()
 	xp_bar.position = Vector2(40,137)
 	xp_bar.size = Vector2(640,7)
@@ -206,7 +230,7 @@ func build_ui() -> void:
 	cards.add_theme_constant_override("separation",20)
 	var scroll := ScrollContainer.new()
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	scroll.custom_minimum_size = Vector2(530,760)
+	scroll.custom_minimum_size = Vector2(580,760)
 	margins.add_child(scroll)
 	cards.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	scroll.add_child(cards)
@@ -239,20 +263,20 @@ func clear_cards(title: String, subtitle: String) -> void:
 	var description := Label.new()
 	description.text = subtitle
 	description.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	description.add_theme_font_size_override("font_size",23)
+	description.add_theme_font_size_override("font_size",26)
 	cards.add_child(description)
 
 func add_button(text: String, callback: Callable) -> Button:
 	var button := Button.new()
 	button.text = text
 	button.focus_mode = Control.FOCUS_NONE
-	button.custom_minimum_size = Vector2(510,78)
+	button.custom_minimum_size = Vector2(560,96)
 	NeonArt.style_button(button,Color("73e6de"),text in ["PLAY","RETRY"] or text.begins_with("CLAIM"))
 	button.mouse_entered.connect(func(): animate_button(button,1.012))
 	button.mouse_exited.connect(func(): animate_button(button,1.0))
 	button.button_down.connect(func(): animate_button(button,0.985))
 	button.button_up.connect(func(): animate_button(button,1.0))
-	button.add_theme_font_size_override("font_size",24)
+	button.add_theme_font_size_override("font_size",28)
 	button.pressed.connect(func(): audio.play_event("ui_click"); callback.call())
 	cards.add_child(button)
 	return button
@@ -274,21 +298,25 @@ func show_menu() -> void:
 		enemy.hide()
 	if is_instance_valid(bullet):
 		bullet.hide()
-	clear_cards("LAST BULLET", "ZORVYKA Games • v0.4.0\nOne Shot. Endless Chaos.\nBEST SCORE %d" % best_score)
-	cards.add_theme_constant_override("separation",12)
+	clear_cards("LAST BULLET", "ZORVYKA Games • v0.5.0\n%s\nBEST SCORE %d" % ["ADMIN • ALL CONTENT UNLOCKED" if admin_enabled else "One Shot. Endless Chaos.",best_score])
+	cards.add_theme_constant_override("separation",8)
 	var mascot := Preview.new()
-	mascot.actor = 0
-	mascot.custom_minimum_size = Vector2(500,100)
+	mascot.actor = selected_robot
+	mascot.custom_minimum_size = Vector2(500,80)
 	cards.add_child(mascot)
 	cards.move_child(mascot,1)
 	add_button("PLAY", show_modes)
 	add_button("HOW TO PLAY", show_help)
+	add_button("ROBOTS • "+RobotRoster.NAMES[selected_robot],show_robots)
 	add_button("SKINS • %d COINS" % coins, show_skins)
 	add_button("SETTINGS", show_settings)
+	add_button("ADMIN • ON" if admin_enabled else "ADMIN",show_admin)
 	if not OS.has_feature("mobile"):
 		add_button("QUIT", func(): get_tree().quit())
 	for child in cards.get_children():
-		if child is Button: child.custom_minimum_size.y = 64
+		if child is Button:
+			child.custom_minimum_size.y = 96
+			child.add_theme_font_size_override("font_size",32)
 
 func show_help() -> void:
 	clear_cards("ONE SHOT. YOUR CALL.", "1. Move with WASD / arrows, or drag the left joystick. Avoid coral enemies.\n\n2. Aim with movement; the arrow previews your next deflect. Press SPACE inside the outer ring. Catch an incoming bullet inside the gold ring for PERFECT!\n\n3. Collect XP, choose upgrades, complete missions for skin coins. Shields block front hits; dodge yellow marked zones. Your bullet is harmless.\n\nPLAY offers Open, Reflector and 90-second Blitz. Chain Perfect catches for bonus points. After boss release, deflect back while its core is gold for x4 damage. Claim x2 gold instantly on results.")
@@ -305,6 +333,7 @@ func start_run(run_mode := "survival", layout := "open") -> void:
 	effects.effects.clear()
 	move_clock = 0
 	player_lean = 0
+	admin_context = false
 	mode = run_mode
 	arena_layout = layout
 	double_claimed = false
@@ -332,6 +361,8 @@ func start_run(run_mode := "survival", layout := "open") -> void:
 	pickups.clear()
 	fires.clear()
 	upgrades = [0,0,0,0,0,0,0,0]
+	if admin_enabled and admin_max_start:
+		for i in range(upgrades.size()): upgrades[i] = Balance.UPGRADE_CAPS[i]
 	perfect_count = 0
 	mission_claimed = [false,false,false]
 	result_paid = false
@@ -340,8 +371,9 @@ func start_run(run_mode := "survival", layout := "open") -> void:
 	last_deflect_perfect = false
 	offered_upgrades.clear()
 	audio.stop_all()
-	player = Vector2(360,650)
+	player = Balance.ARENA.get_center()+Vector2(0,57.5)
 	player_actor.position = player
+	player_actor.robot = selected_robot
 	player_actor.moving = 0
 	player_actor.lean = 0
 	player_actor.target_lean = 0
@@ -390,6 +422,9 @@ func _input(event: InputEvent) -> void:
 		joystick = Vector2.ZERO
 
 func _unhandled_input(event: InputEvent) -> void:
+	if event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_F11 and not OS.has_feature("mobile"):
+		DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_WINDOWED if DisplayServer.window_get_mode() == DisplayServer.WINDOW_MODE_FULLSCREEN else DisplayServer.WINDOW_MODE_FULLSCREEN)
+		return
 	if event is InputEventMouse and event.device == InputEvent.DEVICE_ID_EMULATION:
 		return
 	if state != "playing" and state != "paused":
@@ -401,31 +436,34 @@ func _unhandled_input(event: InputEvent) -> void:
 			toggle_pause()
 	if state != "playing":
 		return
+	var pointer := Vector2.ZERO
+	if event is InputEventScreenTouch or event is InputEventScreenDrag or event is InputEventMouse:
+		pointer = event.position-Vector2(horizontal_padding,0)
 	if event is InputEventScreenTouch:
-		if event.pressed and event.position.x < 340 and event.position.y > 1030 and joystick_id == -1:
+		if event.pressed and pointer.x < 340 and pointer.y > Balance.ARENA.end.y+10 and joystick_id == -1:
 			joystick_id = event.index
-			joystick_origin = event.position
+			joystick_origin = pointer
 		elif not event.pressed and event.index == joystick_id:
 			joystick_id = -1
 			joystick = Vector2.ZERO
 	if event is InputEventScreenDrag and event.index == joystick_id:
-		joystick = ((event.position - joystick_origin) / 70).limit_length()
+		joystick = ((pointer - joystick_origin) / 70).limit_length()
 	# Mouse joystick for desktop preview; keyboard works independently.
 	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
-		if event.pressed and event.position.x < 340 and event.position.y > 1030:
+		if event.pressed and pointer.x < 340 and pointer.y > Balance.ARENA.end.y+10:
 			joystick_id = -2
-			joystick_origin = event.position
+			joystick_origin = pointer
 		elif not event.pressed and joystick_id == -2:
 			joystick_id = -1
 			joystick = Vector2.ZERO
 	if event is InputEventMouseMotion and joystick_id == -2:
-		joystick = ((event.position - joystick_origin)/70).limit_length()
+		joystick = ((pointer - joystick_origin)/70).limit_length()
 
 func request_deflect() -> void:
 	if state == "playing" and cooldown <= 0:
 		attempts += 1
 		deflect_window = 0.22
-		cooldown = 0.65 + upgrades[7]*0.12
+		cooldown = 0.0 if admin_enabled and admin_free_deflect else 0.65 + upgrades[7]*0.12
 		# Immediate sampling distinguishes a timed press from an early buffered catch.
 		try_deflect(true)
 
@@ -437,6 +475,7 @@ func toggle_pause() -> void:
 		joystick_id = -1
 		clear_cards("PAUSED", "Catch your breath.")
 		add_button("RESUME", func(): state = "playing"; overlay.hide())
+		if admin_enabled: add_button("ADMIN TOOLS",show_admin)
 		add_button("MAIN MENU", show_menu)
 	elif state == "paused":
 		state = "playing"
@@ -451,7 +490,9 @@ func _physics_process(delta: float) -> void:
 	var playing_ui := state in ["playing","paused","upgrade"]
 	player_actor.visible = playing_ui and (invulnerable <= 0 or int(invulnerable*15)%2 == 0)
 	header_panel.visible = playing_ui
+	brand.text = "LAST BULLET • ADMIN" if admin_enabled else "LAST BULLET"
 	brand.visible = playing_ui
+	perfect_label.visible = playing_ui
 	health_icons.visible = playing_ui
 	health_icons.queue_redraw()
 	effects.visible = playing_ui
@@ -477,7 +518,7 @@ func _physics_process(delta: float) -> void:
 	feedback = maxf(0,feedback-delta)
 	wave = 1 + int(elapsed / (15 if mode == "blitz" else 20))
 	invulnerable = maxf(0,invulnerable-delta)
-	cooldown = maxf(0,cooldown-delta)
+	cooldown = 0.0 if admin_enabled and admin_free_deflect else maxf(0,cooldown-delta)
 	combo_timer -= delta
 	if combo_timer <= 0:
 		combo = 0
@@ -596,11 +637,11 @@ func spawn_enemy(kind: int) -> void:
 	enemy.phase = rng.randf_range(0,2)
 	var spawn := Vector2.ZERO
 	for attempt in range(16):
-		spawn = Vector2(rng.randf_range(90,630),rng.randf_range(225,960))
+		spawn = Vector2(rng.randf_range(90,630),rng.randf_range(Balance.ARENA.position.y+60,Balance.ARENA.end.y-60))
 		if rng.randf() < 0.5:
 			spawn.x = 90 if rng.randf() < 0.5 else 630
 		else:
-			spawn.y = 225 if rng.randf() < 0.5 else 960
+			spawn.y = Balance.ARENA.position.y+60 if rng.randf() < 0.5 else Balance.ARENA.end.y-60
 		if spawn.distance_to(player) > 200:
 			break
 	if spawn.distance_to(player) <= 200:
@@ -671,7 +712,7 @@ func show_upgrades() -> void:
 	for i in range(mini(3,available.size())):
 		var index := available[i]
 		var card := add_button("%s [%d/%d]\n%s" % [Balance.UPGRADE_NAMES[index],upgrades[index],Balance.UPGRADE_CAPS[index],Balance.UPGRADE_INFO[index]],choose_upgrade.bind(index))
-		card.add_theme_font_size_override("font_size",21)
+		card.add_theme_font_size_override("font_size",26)
 		card.alignment = HORIZONTAL_ALIGNMENT_LEFT
 		for style_name in ["normal","hover","pressed","disabled"]:
 			var style := card.get_theme_stylebox(style_name).duplicate() as StyleBoxFlat
@@ -768,7 +809,8 @@ func notice(text: String) -> void:
 
 func update_hud() -> void:
 	var clock := time_text() if mode != "blitz" else "%02d:%02d" % [int(maxf(0,90-elapsed))/60,int(maxf(0,90-elapsed))%60]
-	hud.text = "HP %d/5    %s    %s %d\nSCORE %d  •  KILL ×%d\nPERFECT ×%d  •  LV %d" % [hp,clock,"WAVE" if mode != "blitz" else "BLITZ",wave,score+int(elapsed),combo,perfect_chain,level]
+	hud.text = "HP %d/5    %s    %s %d\nSCORE %d  •  KILL ×%d" % [hp,clock,"WAVE" if mode != "blitz" else "BLITZ",wave,score+int(elapsed),combo]
+	perfect_label.text = "PERFECT ×%d  •  LV %d" % [perfect_chain,level]
 	xp_bar.max_value = xp_required()
 	xp_bar.value = xp
 	mission_label.text = "MISSIONS  Kills %d/15  •  Perfect %d/3  •  Chain %d/10" % [mini(kills,15),mini(perfect_count,3),mini(best_combo,10)]
@@ -780,7 +822,7 @@ func _process(delta: float) -> void:
 
 func _draw() -> void:
 	draw_texture_rect(NeonArt.FLOOR,Balance.ARENA,false)
-	if state in ["menu","results"]:
+	if state in ["menu","results","admin"]:
 		draw_rect(Rect2(0,0,720,1280),Color(0.01,0.02,0.05,0.3))
 		return
 	if arena_layout == "reflector":
@@ -861,7 +903,7 @@ func try_deflect(immediate: bool) -> bool:
 	return true
 
 func hurt_player(source: Vector2) -> void:
-	if invulnerable > 0 or state != "playing":
+	if (admin_enabled and admin_god) or invulnerable > 0 or state != "playing":
 		return
 	hp -= 1
 	invulnerable = 1.2
@@ -899,8 +941,22 @@ func load_profile() -> void:
 					owned_skins.append(id)
 		selected_skin = int(config.get_value("profile","selected",0))
 		if not owned_skins.has(selected_skin): selected_skin = 0
+		owned_robots = [0]
+		var saved_robots: Variant = config.get_value("profile","robots",[0])
+		if saved_robots is Array:
+			for id in saved_robots:
+				if id is int and id >= 0 and id < RobotRoster.NAMES.size() and not owned_robots.has(id): owned_robots.append(id)
+		selected_robot = int(config.get_value("profile","robot",0))
+		if not owned_robots.has(selected_robot): selected_robot = 0
 		sound_on = bool(config.get_value("settings","sound",true))
 		haptics_on = bool(config.get_value("settings","haptics",true))
+	if admin_enabled:
+		owned_skins = [0,1,2,3]
+		owned_robots = [0,1,2,3,4,5,6]
+		coins = maxi(999999,coins)
+		admin_god = bool(config.get_value("admin","god",true))
+		admin_max_start = bool(config.get_value("admin","max_start",false))
+		admin_free_deflect = bool(config.get_value("admin","free_deflect",false))
 	audio.enabled = sound_on
 
 func save_profile() -> void:
@@ -912,19 +968,25 @@ func save_profile() -> void:
 	config.set_value("profile","coins",coins)
 	config.set_value("profile","skins",owned_skins)
 	config.set_value("profile","selected",selected_skin)
+	config.set_value("profile","robots",owned_robots)
+	config.set_value("profile","robot",selected_robot)
 	config.set_value("settings","sound",sound_on)
 	config.set_value("settings","haptics",haptics_on)
+	if admin_enabled:
+		config.set_value("admin","god",admin_god)
+		config.set_value("admin","max_start",admin_max_start)
+		config.set_value("admin","free_deflect",admin_free_deflect)
 	config.save(save_path)
 
 func show_skins() -> void:
 	show_menu()
-	clear_cards("BULLET SKINS", "COSMETIC ONLY • %d COINS\nPreview each trail below. Earn coins from missions and runs." % coins)
+	clear_cards("BULLET SKINS", "ADMIN • ALL SKINS FREE" if admin_enabled else "COSMETIC ONLY • %d COINS\nPreview each trail below. Earn coins from missions and runs." % coins)
 	cards.add_theme_constant_override("separation",10)
 	for i in range(4):
 		var action := "EQUIPPED" if selected_skin == i else ("EQUIP" if owned_skins.has(i) else "%d COINS" % Balance.SKIN_COSTS[i])
 		add_button("%s • %s" % [Balance.SKIN_NAMES[i],action],buy_or_equip.bind(i))
 		var button := cards.get_child(cards.get_child_count()-1) as Button
-		button.custom_minimum_size.y = 64
+		button.custom_minimum_size.y = 88
 		button.add_theme_color_override("font_color",Balance.SKIN_COLORS[i])
 		button.add_theme_color_override("font_disabled_color",Balance.SKIN_COLORS[i].darkened(0.2))
 		button.disabled = selected_skin == i or (not owned_skins.has(i) and coins < Balance.SKIN_COSTS[i])
@@ -951,3 +1013,237 @@ func show_settings() -> void:
 	add_button("LOW EFFECTS: "+("ON" if low_effects else "OFF"),func(): low_effects = not low_effects; save_profile(); show_settings())
 	add_button("VIBRATION: " + ("ON" if haptics_on else "OFF"),func(): haptics_on = not haptics_on; save_profile(); show_settings())
 	add_button("BACK",show_menu)
+
+func admin_profile_path() -> String:
+	return normal_save_path.get_basename()+"-admin.cfg"
+
+func profile_mode_path() -> String:
+	return normal_save_path.get_basename()+"-mode.cfg"
+
+func switch_admin(enabled: bool) -> void:
+	if state not in ["menu","results","admin"] or (admin_context and state == "admin"):
+		return
+	save_profile()
+	admin_enabled = enabled
+	admin_context = false
+	save_path = admin_profile_path() if enabled else normal_save_path
+	# Load each mode's own progression. Never copy an admin record into normal play.
+	best_score = 0
+	blitz_best = 0
+	lifetime_chain = 0
+	coins = 0
+	owned_skins = [0]
+	selected_skin = 0
+	owned_robots = [0]
+	selected_robot = 0
+	load_profile()
+	var mode_config := ConfigFile.new()
+	mode_config.set_value("mode","admin",enabled)
+	mode_config.save(profile_mode_path())
+	save_profile()
+	show_menu()
+	show_admin()
+
+func show_admin() -> void:
+	if state == "paused": admin_context = true
+	elif state in ["menu","results"]: admin_context = false
+	state = "admin"
+	joystick = Vector2.ZERO
+	joystick_id = -1
+	clear_cards("ADMIN CONTROL", "ALL CONTENT UNLOCKED\nSeparate admin save • Normal progress is preserved." if admin_enabled else "Owner test tools: free skins, test gold, god mode, upgrade lab and instant boss access.\nYour normal save stays separate.")
+	cards.add_theme_constant_override("separation",12)
+	if not admin_enabled:
+		add_button("ENABLE ADMIN • UNLOCK ALL",switch_admin.bind(true))
+	else:
+		add_button("TEST OPTIONS",show_admin_options)
+		add_button("UPGRADE LAB • ALL 8",show_upgrade_lab)
+		add_button("SUMMON BOSS" if admin_context else "START BOSS TEST",admin_boss)
+		add_button("ENEMY LAB",show_enemy_lab)
+		if not admin_context:
+			add_button("ALL SKINS • FREE",show_skins)
+			add_button("ALL ROBOTS • FREE",show_robots)
+			add_button("RETURN TO NORMAL MODE",switch_admin.bind(false))
+	add_button("RESUME GAME" if admin_context else "BACK TO MENU",close_admin)
+
+func close_admin() -> void:
+	if admin_context:
+		admin_context = false
+		state = "playing"
+		overlay.hide()
+	else:
+		show_menu()
+
+func show_admin_options() -> void:
+	if not admin_enabled: return
+	clear_cards("ADMIN OPTIONS","Options apply only while admin is enabled. Upgrades still use safe caps and one bullet.")
+	add_button("GOD MODE: "+("ON" if admin_god else "OFF"),toggle_admin_option.bind("god"))
+	add_button("START MAX UPGRADES: "+("ON" if admin_max_start else "OFF"),toggle_admin_option.bind("max"))
+	add_button("NO DEFLECT COOLDOWN: "+("ON" if admin_free_deflect else "OFF"),toggle_admin_option.bind("deflect"))
+	add_button("BACK",show_admin)
+
+func toggle_admin_option(option: String) -> void:
+	if not admin_enabled or state != "admin": return
+	match option:
+		"god": admin_god = not admin_god
+		"max": admin_max_start = not admin_max_start
+		"deflect":
+			admin_free_deflect = not admin_free_deflect
+			if admin_free_deflect: cooldown = 0
+	save_profile()
+	show_admin_options()
+
+func ensure_admin_arena() -> void:
+	if not admin_context:
+		start_run("survival","open")
+		admin_context = true
+		state = "admin"
+
+func show_upgrade_lab() -> void:
+	if not admin_enabled: return
+	ensure_admin_arena()
+	clear_cards("UPGRADE LAB","Game paused. Tap to cycle 0 → cap → 0. Resume to test your build.")
+	cards.add_theme_constant_override("separation",10)
+	for i in range(upgrades.size()):
+		var button := add_button("%s  %d/%d" % [Balance.UPGRADE_NAMES[i],upgrades[i],Balance.UPGRADE_CAPS[i]],admin_cycle_upgrade.bind(i))
+		button.custom_minimum_size.y = 88
+	add_button("MAX ALL",admin_set_upgrades.bind(true))
+	add_button("CLEAR ALL",admin_set_upgrades.bind(false))
+	add_button("BACK",show_admin)
+
+func admin_cycle_upgrade(index: int) -> void:
+	if not admin_enabled or state != "admin" or index < 0 or index >= upgrades.size(): return
+	upgrades[index] = (upgrades[index]+1)%(Balance.UPGRADE_CAPS[index]+1)
+	show_upgrade_lab()
+
+func admin_set_upgrades(maximum: bool) -> void:
+	if not admin_enabled or state != "admin": return
+	for i in range(upgrades.size()): upgrades[i] = Balance.UPGRADE_CAPS[i] if maximum else 0
+	show_upgrade_lab()
+
+func admin_boss() -> void:
+	if not admin_enabled: return
+	ensure_admin_arena()
+	if not is_instance_valid(boss): spawn_enemy(3)
+	boss_spawned = true
+	close_admin()
+	notice("ADMIN • BULLET EATER TEST")
+
+func show_enemy_lab() -> void:
+	if not admin_enabled: return
+	ensure_admin_arena()
+	clear_cards("ENEMY LAB","Paused • Spawn safely at arena edges. Repeated boss requests reuse the live boss.")
+	cards.add_theme_constant_override("separation",10)
+	var names := ["CHASER","DASHER","TANK","BULLET EATER","SHIELD GUARD","ZONE CASTER"]
+	for i in range(6):
+		var button := add_button("SPAWN "+names[i],admin_spawn_enemy.bind(i))
+		button.custom_minimum_size.y = 88
+	add_button("BACK",show_admin)
+
+func admin_spawn_enemy(kind: int) -> void:
+	if not admin_enabled or state != "admin" or kind < 0 or kind > 5: return
+	if kind == 3:
+		if not is_instance_valid(boss): spawn_enemy(3)
+		boss_spawned = true
+	elif enemies.size() < Balance.MAX_ENEMIES:
+		spawn_enemy(kind)
+	show_enemy_lab()
+
+func on_viewport_changed() -> void:
+	var size := get_viewport_rect().size
+	var safe := Vector2.ZERO
+	if OS.has_feature("mobile"):
+		var window := DisplayServer.window_get_size()
+		var area := DisplayServer.get_display_safe_area()
+		if window.y > 0 and area.size.y > 0:
+			safe.x = clampf(area.position.y*size.y/window.y,0,size.y*0.12)
+			safe.y = clampf((window.y-area.end.y)*size.y/window.y,0,size.y*0.12)
+	layout_viewport(size,safe)
+
+func layout_viewport(size: Vector2, safe := Vector2.ZERO) -> void:
+	canvas_height = maxf(1280,size.y)
+	horizontal_padding = maxf(0,(size.x-720)*0.5)
+	position.x = horizontal_padding
+	ui.offset.x = horizontal_padding
+	var old_arena := Balance.ARENA
+	Balance.ARENA = Rect2(30,165+safe.x,660,canvas_height-425-safe.x-safe.y)
+	Geometry.PILLAR = Rect2(305,Balance.ARENA.get_center().y-132.5,110,110)
+	if is_instance_valid(bullet) and old_arena != Balance.ARENA:
+		var normalized := (player-old_arena.position)/old_arena.size
+		player = Balance.ARENA.position+normalized*Balance.ARENA.size
+		if arena_layout == "reflector": player = Geometry.resolve(player,18)
+		player_actor.position = player
+		player_actor.reset_physics_interpolation()
+		bullet.position = bullet.position.clamp(Balance.ARENA.position+Vector2(8,8),Balance.ARENA.end-Vector2(8,8))
+		if arena_layout == "reflector": bullet.position = Geometry.resolve(bullet.position,7)
+		bullet.trail.clear()
+		bullet.reset_physics_interpolation()
+		for enemy in enemies:
+			enemy.position = enemy.position.clamp(Balance.ARENA.position+Vector2.ONE*enemy.radius,Balance.ARENA.end-Vector2.ONE*enemy.radius)
+			if arena_layout == "reflector": enemy.position = Geometry.resolve(enemy.position,enemy.radius)
+			enemy.reset_physics_interpolation()
+	header_panel.position.y = 16+safe.x
+	hud.position.y = 52+safe.x
+	perfect_label.position.y = 110+safe.x
+	brand.position.y = 23+safe.x
+	health_icons.position.y = 116+safe.x
+	xp_bar.position.y = 137+safe.x
+	pause_button.position.y = 40+safe.x
+	boss_label.position.y = 169+safe.x
+	boss_bar.position.y = 198+safe.x
+	deflect_button.position = Vector2(475,canvas_height-215-safe.y)
+	deflect_button.size = Vector2(210,155)
+	joystick_origin = Vector2(135,canvas_height-145-safe.y)
+	joystick_id = -1
+	joystick = Vector2.ZERO
+	mission_label.position.y = Balance.ARENA.end.y+5
+	toast.position.y = Balance.ARENA.end.y-65
+	var height := canvas_height-200-safe.x-safe.y
+	var scroll := cards.get_parent() as ScrollContainer
+	scroll.custom_minimum_size = Vector2(590,height-64)
+	overlay.position = Vector2(35,100+safe.x)
+	overlay.size = Vector2(650,height)
+	queue_redraw()
+
+func show_robots(index := -1) -> void:
+	show_menu()
+	robot_gallery_index = selected_robot if index < 0 else clampi(index,0,RobotRoster.NAMES.size()-1)
+	var id := robot_gallery_index
+	clear_cards("ROBOT HANGAR","ADMIN • ALL ROBOTS FREE" if admin_enabled else "Choose your pilot • %d coins\nCosmetic only: same HP, speed and hitbox." % coins)
+	cards.add_theme_constant_override("separation",14)
+	var portrait := Preview.new()
+	portrait.actor = id
+	portrait.actor_width = 200
+	portrait.custom_minimum_size = Vector2(560,210)
+	cards.add_child(portrait)
+	var name_label := Label.new()
+	name_label.text = RobotRoster.NAMES[id]+"\n"+RobotRoster.NOTES[id]
+	name_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	name_label.add_theme_font_size_override("font_size",26)
+	name_label.add_theme_color_override("font_color",RobotRoster.COLORS[id])
+	cards.add_child(name_label)
+	var navigation := HBoxContainer.new()
+	navigation.add_theme_constant_override("separation",12)
+	cards.add_child(navigation)
+	for direction in [-1,1]:
+		var next: int = (id+direction+RobotRoster.NAMES.size())%RobotRoster.NAMES.size()
+		var button := add_button("‹ PREV" if direction < 0 else "NEXT ›",show_robots.bind(next))
+		cards.remove_child(button)
+		navigation.add_child(button)
+		button.custom_minimum_size = Vector2(270,88)
+		button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	var action := "EQUIPPED" if selected_robot == id else "EQUIP" if owned_robots.has(id) else "UNLOCK • %d COINS" % RobotRoster.COSTS[id]
+	var equip := add_button(action,buy_or_equip_robot.bind(id))
+	equip.disabled = selected_robot == id or (not owned_robots.has(id) and coins < RobotRoster.COSTS[id])
+	add_button("BACK TO MENU",show_menu)
+
+func buy_or_equip_robot(index: int) -> void:
+	if index < 0 or index >= RobotRoster.NAMES.size(): return
+	if not owned_robots.has(index):
+		if not admin_enabled:
+			if coins < RobotRoster.COSTS[index]: return
+			coins -= RobotRoster.COSTS[index]
+		owned_robots.append(index)
+	selected_robot = index
+	player_actor.robot = selected_robot
+	save_profile()
+	show_robots(index)

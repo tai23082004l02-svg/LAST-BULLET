@@ -135,7 +135,7 @@ func advance(delta: float, game: Node2D) -> void:
 	travel += velocity.length() * delta
 	if check_time > 0.6:
 		if position.distance_to(last_check) < 3 and travel > 100:
-			position = Vector2(360,650)
+			position = Balance.ARENA.get_center()+Vector2(0,57.5)
 			trail.clear()
 			velocity = Vector2(0.63, -0.77) * speed
 		last_check = position

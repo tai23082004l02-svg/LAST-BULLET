@@ -103,3 +103,15 @@ static func heart(canvas: CanvasItem, point: Vector2, filled: bool) -> void:
 	canvas.draw_circle(point+Vector2(-3,-2),4,color)
 	canvas.draw_circle(point+Vector2(3,-2),4,color)
 	canvas.draw_colored_polygon(PackedVector2Array([point+Vector2(-7,-1),point+Vector2(0,8),point+Vector2(7,-1)]),color)
+
+static func hero(canvas: CanvasItem, index: int, center: Vector2, width: float, clock: float, lean := 0.0, flash := 0.0) -> void:
+	if index == 0:
+		robot(canvas,0,center,width,clock,lean,flash)
+		return
+	var tex := RobotRoster.texture(index-1)
+	var height := width*tex.get_height()/tex.get_width()
+	canvas.draw_set_transform(center+Vector2(0,width*0.35),0,Vector2(1,0.35))
+	canvas.draw_circle(Vector2.ZERO,width*0.4,Color(0.005,0.01,0.025,0.65))
+	canvas.draw_set_transform(center+Vector2(0,sin(clock*5)*1.2),lean)
+	canvas.draw_texture_rect(tex,Rect2(-width*0.5,-height*0.5,width,height),false,Color(1+flash*9,1+flash*9,1+flash*9,1))
+	canvas.draw_set_transform(Vector2.ZERO)
