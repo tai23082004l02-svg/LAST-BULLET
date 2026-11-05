@@ -1,3 +1,7 @@
+# Current Campaign — v1.0.0
+
+Read RPG_SYSTEMS.md for current5-room dungeons, Hard, checkpoint, drops, sweep and pets. Old timed-boss schedule below is historical. Summon remains unchanged. Each stage now clears combat/elite, chooses supply/event, then fights boss;3-star sweep uses separate Normal/Hard stars and replay loot only. First clear Normal unlocks pet. Preserve existing stars/clears.
+
 # Campaign & Summon — v0.9.0
 
 Gameplay is now auto-fire. Drag anywhere except buttons to move; double-tap for the robot skill. Default release-to-fire; optional moving fire in Settings. Pick one of12 free weapons in the VŨ KHÍ tab; see ARSENAL.md. Deflect, permanent bullets, Perfect and return-strike boss mechanics from older guides are retired.

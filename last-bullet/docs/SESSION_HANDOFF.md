@@ -1,3 +1,19 @@
+# CURRENT HANDOFF — v1.0.0 RPG (2026-11-05)
+
+Read RPG_SYSTEMS.md first. This section supersedes older v0.8/v0.9 progression and timed-campaign notes below.
+
+User explicitly authorized all discussed systems, no further permission needed for routine implementation:12 gear templates,4 slots/rarities,+0…10, guaranteed3→1 fusion/refunds/protections,6 passive pets,5-stage×5-room dungeons with separate Hard stars, checkpoints, sweeps,3 loadout presets and2/4 set bonuses, collection gallery and DPS practice. The requested collection gallery replaces weakness/loss-analysis idea; do not add those features.
+
+Entry: lobby tab ĐỒ & PET. Gear/pets/daily/sweep/presets/library/practice in hub. Keep12 free weapons,16 run upgrades, release-to-fire with moving-fire option, drag-anywhere controls and hidden double-tap skill. Admin now owns all48 gear rarity variants and6pets, free upgrades/fusion-material test button; all normal/admin state stays isolated.
+
+Key modules: progression.gd pure inventory/economy; progression_ui.gd hub/routes; adventure.gd room/checkpoint/sweep/practice; companions.gd passive pets/set shield; collectible_view.gd lightweight procedural art; game/combat glue. RPG persisted under rpg schema1 in existing profile, atomically temp+rename. Initial four Common pieces unequipped, Bee,30 mats granted once. Keep current checkpoint receipts, never repay missions/milestones on resume. First-clear/currency/inventory/rewards committed together. No ads/mock ads/payments added.
+
+Dungeon flow is enemy-clear rooms, not old at90/105/120-second boss schedule. Hard changes fan patterns/speed, not only HP. Resume restarts current room with saved build, same upgrade offers if pending; rewards stay banked. Starting a new campaign replaces checkpoint; Practice does not. Sweep uses replay boss loot, consumes1 sweep ticket, requires3 stars per difficulty, admin free. Daily5 UTC tickets plus1 per run mission. See RPG_SYSTEMS.md for exact reward rates/formulas and limits.
+
+Current tests:17 suites; shooter_campaign updated to five-room/Hard/checkpoint semantics; old timed/permanent-bullet tests remain historical. Added rpg_inventory, pets_practice, checkpoint_rewards and rpg_stress. Physical new systems on S23 Ultra still need user playtest; no phone FPS/APK claim. Close Godot before Termux pull; preserve/stash local project.godot edits rather than discard.
+
+--- Older context (current section takes precedence) ---
+
 # LAST BULLET handoff — v0.9.0 (2026-11-05)
 
 Repository tai23082004l02-svg/LAST-BULLET, branch main. Project: last-bullet/project.godot. Read current HEAD and README before edits. This handoff supersedes earlier Deflect design notes.

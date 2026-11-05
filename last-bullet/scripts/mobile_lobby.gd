@@ -122,9 +122,9 @@ func _ready() -> void:
 	bottom_bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	bottom_bar.add_theme_stylebox_override("panel",NeonArt.panel(Color("0b2031"),Color("244f63"),22))
 	add_child(bottom_bar)
-	var routes: Array[Callable] = [game.show_menu,game.show_robots,game.show_armory,game.show_summon,game.show_skins]
+	var routes: Array[Callable] = [game.show_menu,game.show_robots,game.show_armory,game.show_summon,game.rpg_ui.hub]
 	for i in range(5):
-		var button := make_button(bottom_bar,"\n"+["SẢNH","ROBOT","VŨ KHÍ","SUMMON","SKIN"][i],routes[i])
+		var button := make_button(bottom_bar,"\n"+["SẢNH","ROBOT","VŨ KHÍ","SUMMON","ĐỒ & PET"][i],routes[i])
 		button.add_theme_font_size_override("font_size",18)
 		button.add_theme_stylebox_override("normal",StyleBoxEmpty.new())
 		var icon := Control.new()
@@ -199,7 +199,7 @@ func open_home() -> void:
 func open_section(title_text: String, front: bool) -> void:
 	visible = front
 	home_view.hide()
-	active_page = 1 if title_text.contains("ROBOT HANGAR") else 2 if title_text.contains("KHO VŨ KHÍ") else 3 if title_text.contains("SUMMON") else 4 if title_text.contains("BULLET SKINS") else 0
+	active_page = 1 if title_text.contains("ROBOT HANGAR") else 2 if title_text.contains("KHO VŨ KHÍ") else 3 if title_text.contains("SUMMON") else 4 if title_text.contains("BULLET SKINS") or title_text.contains("HÀNH TRANG") or title_text.contains("PET") or title_text.contains("TRANG BỊ") or title_text.contains("THƯ VIỆN") or title_text.contains("HỢP NHẤT") else 0
 	if front:
 		top_bar.show()
 		bottom_bar.show()

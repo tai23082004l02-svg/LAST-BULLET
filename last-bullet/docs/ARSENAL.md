@@ -1,3 +1,5 @@
+> v1.0 adds gear/pets/room dungeons in RPG_SYSTEMS.md. The12 free weapons/16 upgrades described here remain. Weapon and skill damage/crit/cooldown now include equipped gear/set stats; do not overwrite those bonuses.
+
 # Arsenal & build system — v0.9.0
 
 User approved an Archer Hero-style auto-shooter direction with broad freedom to add weapon variety. This implementation uses the existing original robot/neon presentation and keeps drag-anywhere movement plus double-tap skills. No external game assets were copied.

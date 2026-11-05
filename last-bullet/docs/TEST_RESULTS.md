@@ -1,3 +1,20 @@
+# v1.0.0 RPG validation — 2026-11-05
+
+Godot4.6.3 Linux Compatibility; editor import clean.17 suites pass: rpg_inventory, pets_practice, checkpoint_rewards, shooting, shooter_campaign, shooter_stress, admin_mobile, robots, summon, graphics, lobby, results, upgrade_ui, double_tap, arsenal, arsenal_stress, rpg_stress.
+
+- rpg_inventory: one-time migration/empty bag, costs/caps, fusion same-template/tier/unique IDs, highest level/refund investments, locked/worn protection, repeated fuse rejection, preset references, dismantle, real set stats, admin all tiers/pets, daily/receipt dedup.
+- shooter_campaign rewritten for all5×5 active room sequences, Hard stars/patterns, pending upgrade reload/exact offers, room reward receipts, fixed pet unlocks, once-only finish, sweep1/5/10 economics/conditions/duplicate UI clicks, failure retains loot.
+- checkpoint_rewards: XP-upgrade resume keeps same offered choices/build without skipping room; mid-room mission/milestone rewards cannot pay again after replay; receipt pruning preserves active checkpoint; x2 includes banked mission gold once.
+- pets_practice: six actual pet effects and Medic cap, pause/freeze, real HP/damage/crit/speed/cooldown and sets, collection ownership/discovery, preset restore, static10s DPS practice with no payout/checkpoint loss.
+- rpg_stress:3 Legendary+10 sets×6pets×30 simulated seconds, all16 upgrades, varied weapons/skills; finite shots, HP bounds,160 friendly/180 hostile/32 flashes caps. Other shooter/arsenal stress adds720+540 simulated seconds. Not a real-time device benchmark.
+- Existing remaining suites cover weapon collisions/LOS/expiry/native elements/auxiliaries, save migration, admin isolation/touch layout, summon pity/economics/skip guards, UI lifecycle/atlas/effect bounds, lobby, results/x2, upgrades and double tap.
+
+Rendered equipment/fusion/pets/locked-and-owned collection/dungeon room strip/supply/sweep and gameplay,360×800 plus360×640 gear screen, via Xvfb/Mesa. Screens under docs/previews/v1.0-*.png. No per-pet physics body or per-status node; reuse approved atlases and procedural neon icons.
+
+Not verified: actual S23 Ultra play feel, balance/loot progression speed, physical multitouch/notches, FPS/heat/battery or APK export. Old phone confirmation was setup only. Old validation below is historical and timed campaign descriptions superseded by room flow. No ads/payments/backend.
+
+---
+
 # v0.9.0 Arsenal validation — 2026-11-05
 
 Godot4.6.3 Linux Compatibility. All13 current suites pass: arsenal, arsenal_stress, shooting, shooter_campaign, shooter_stress, admin_mobile, robots, summon, graphics, lobby, results, upgrade_ui and double_tap. Editor import passes.

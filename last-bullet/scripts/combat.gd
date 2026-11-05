@@ -72,10 +72,10 @@ func interval() -> float:
 	return float(INTERVALS[weapon_id()])/(1+game.upgrades[1]*0.16)
 
 func damage() -> float:
-	return float(DAMAGES[weapon_id()])*(1+game.upgrades[0]*0.22)
+	return float(DAMAGES[weapon_id()])*(1+game.upgrades[0]*0.22)*float(game.run_stats.damage)*(1+game.adventure.risk if game.mode == "campaign" else 1)
 
 func skill_cooldown() -> float:
-	return float(SKILL_COOLDOWNS[game.selected_robot])*(1-game.upgrades[7]*0.1)
+	return float(SKILL_COOLDOWNS[game.selected_robot])*(1-game.upgrades[7]*0.1)*float(game.run_stats.cooldown)
 
 func emit_shot(origin: Vector2, direction: Vector2, power: float, pierce: int, chain: int, reach: float, speed: float, style: int) -> void:
 	if shots.size() >= MAX_SHOTS or direction == Vector2.ZERO: return
@@ -105,7 +105,7 @@ func skill() -> void:
 	game.cooldown = 0.0 if game.admin_enabled and game.admin_free_skill else skill_cooldown()
 	skill_uses += 1
 	var robot: int = game.selected_robot
-	var power: float = DAMAGES[game.selected_robot]*(1+game.upgrades[0]*0.22)
+	var power: float = DAMAGES[game.selected_robot]*(1+game.upgrades[0]*0.22)*float(game.run_stats.damage)*(1+game.adventure.risk if game.mode == "campaign" else 1)
 	if robot == 0:
 		shield = 3.0
 		shield_hits = 3
@@ -189,17 +189,17 @@ func advance_shots(delta: float) -> void:
 			shot.p = start+motion*float(contact.t)
 			shot.hit.append(enemy.get_instance_id())
 			var blocked := enemy.blocks(shot.v)
-			var critical: bool = game.rng.randf() < game.upgrades[3]*0.08
+			var critical: bool = game.rng.randf() < minf(0.85,game.upgrades[3]*0.08+float(game.run_stats.crit))
 			if critical and not blocked: criticals += 1
 			if not blocked:
 				hits += 1
-				if shot.style == 2 or game.upgrades[12] > 0: enemy.chilled = maxf(enemy.chilled,(1.4 if shot.style == 2 else 0.6)+game.upgrades[12]*0.4)
+				if shot.style == 2 or game.upgrades[12] > 0 or game.run_stats.cold > 0: enemy.chilled = maxf(enemy.chilled,(1.4 if shot.style == 2 else 0.6)+game.upgrades[12]*0.4+float(game.run_stats.cold))
 				if shot.style == 11 or game.upgrades[11] > 0:
 					enemy.poisoned = 3.0
 					enemy.poison_power = maxf(enemy.poison_power,(1.2 if shot.style == 11 else 0.0)+game.upgrades[11]*0.5)
-				if shot.style == 3 or game.upgrades[4] > 0:
+				if shot.style == 3 or game.upgrades[4] > 0 or game.run_stats.burn > 0:
 					enemy.burning = maxf(enemy.burning,2.0)
-					enemy.burn_power = maxf(enemy.burn_power,(0.6 if shot.style == 3 else 0.0)+game.upgrades[4]*0.5)
+					enemy.burn_power = maxf(enemy.burn_power,(0.6 if shot.style == 3 else 0.0)+game.upgrades[4]*0.5+float(game.run_stats.burn))
 			var shock := not blocked and enemy.chilled > 0 and enemy.burning > 0 and enemy.thermal_lock <= 0
 			var shock_point: Vector2 = enemy.position
 			if shock:
@@ -289,9 +289,12 @@ func enemy_volley(enemy: ArenaEnemy) -> void:
 			2: angles = [-0.6,-0.3,0.0,0.3,0.6]
 			3: angles = [-0.5,-0.25,0.0,0.25,0.5]
 			_: angles = [-0.6,-0.4,-0.2,0.0,0.2,0.4,0.6] if phase_two else [-0.3,0.0,0.3]
+	if game.mode == "campaign" and game.adventure.hard:
+		if enemy.kind == 3: angles.append_array([-0.8,0.8])
+		else: angles = [-0.14,0.0,0.14]
 	for angle in angles:
 		if hostile.size() >= MAX_HOSTILE: break
-		hostile.append({"p":enemy.position+direction.rotated(angle)*(enemy.radius+10),"v":direction.rotated(angle)*(220 if enemy.kind == 3 else 180),"ttl":4.0})
+		hostile.append({"p":enemy.position+direction.rotated(angle)*(enemy.radius+10),"v":direction.rotated(angle)*((260 if game.mode == "campaign" and game.adventure.hard else 220) if enemy.kind == 3 else 200 if game.mode == "campaign" and game.adventure.hard else 180),"ttl":4.0})
 	game.audio.play_event("enemy_shoot",0.8)
 
 func advance(delta: float) -> void:
@@ -324,10 +327,10 @@ func advance(delta: float) -> void:
 				game.damage_enemy(enemy,enemy.burn_power*0.5,true,Vector2.ZERO)
 				if game.state != "playing": return
 				if not game.enemies.has(enemy): continue
-		if enemy.kind not in [2,3,5]: continue
+		if enemy.kind not in [2,3,5] or game.mode == "practice": continue
 		enemy.fire_clock -= delta
 		if enemy.fire_clock <= 0:
-			enemy.fire_clock = (1.4 if enemy.kind == 3 else 2.8)+(0.4 if enemy.chilled > 0 else 0)
+			enemy.fire_clock = ((1.4 if enemy.kind == 3 else 2.8)+(0.4 if enemy.chilled > 0 else 0))*(0.8 if game.mode == "campaign" and game.adventure.hard else 1.0)
 			enemy_volley(enemy)
 	for shot in hostile.duplicate():
 		var motion: Vector2 = shot.v*minf(delta,shot.ttl)

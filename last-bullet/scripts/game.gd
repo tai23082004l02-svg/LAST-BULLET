@@ -4,6 +4,16 @@ signal enemy_killed(points: int)
 signal leveled_up
 signal run_ended
 
+const Progress = preload("res://scripts/progression.gd")
+var progress = Progress.new()
+var adventure: Node
+var rpg_ui: Node
+var companions: Node2D
+var max_hp := 5
+var run_stats := {"hp":5,"damage":1.0,"speed":1.0,"crit":0.0,"cooldown":1.0,"cold":0.0,"burn":0.0,"barrier":false,"legend_shield":false,"sets":[0,0,0]}
+var run_pet := 0
+var campaign_hard := false
+var adventure_delta := 0.0
 var player := Vector2(360, 650)
 var aim := Vector2.UP
 const Shooter = preload("res://scripts/combat.gd")
@@ -150,6 +160,16 @@ func _ready() -> void:
 	combat.game = self
 	combat.z_index = 20
 	add_child(combat)
+	adventure = preload("res://scripts/adventure.gd").new()
+	adventure.game = self
+	add_child(adventure)
+	rpg_ui = preload("res://scripts/progression_ui.gd").new()
+	rpg_ui.game = self
+	add_child(rpg_ui)
+	companions = preload("res://scripts/companions.gd").new()
+	companions.game = self
+	companions.z_index = 18
+	add_child(companions)
 	effects = FX.new()
 	effects.z_index = 12
 	add_child(effects)
@@ -189,7 +209,12 @@ func build_ui() -> void:
 	health_icons.position = Vector2(525,116)
 	health_icons.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	health_icons.draw.connect(func():
-		for i in range(5): NeonArt.heart(health_icons,Vector2(i*26,0),i<hp))
+		if max_hp <= 5:
+			for i in range(max_hp): NeonArt.heart(health_icons,Vector2(i*26,0),i<hp)
+		else:
+			health_icons.draw_rect(Rect2(0,-6,130,12),Color("152c3a"))
+			health_icons.draw_rect(Rect2(2,-4,126*clampf(float(hp)/max_hp,0,1),8),Color("8bffe1"))
+			health_icons.draw_rect(Rect2(0,-6,130,12),Color("5cafac"),false,1))
 	root.add_child(health_icons)
 	root.add_child(hud)
 	weapon_label = Label.new()
@@ -383,6 +408,7 @@ func start_run(run_mode := "survival", layout := "open") -> void:
 	player_lean = 0
 	admin_context = false
 	mode = run_mode
+	if run_mode != "campaign": adventure.run_id = adventure.new_id()
 	arena_layout = layout
 	double_claimed = false
 	run_coins = 0
@@ -422,7 +448,11 @@ func start_run(run_mode := "survival", layout := "open") -> void:
 	aim = Vector2.UP
 	elapsed = 0
 	wave = 1
-	hp = 5
+	run_stats = progress.stats()
+	max_hp = int(run_stats.hp)
+	run_pet = progress.pet
+	hp = max_hp
+	companions.reset()
 	score = 0
 	kills = 0
 	combo = 0
@@ -589,6 +619,7 @@ func _physics_process(delta: float) -> void:
 	xp_bar.visible = state in ["playing","paused"]
 	mission_label.visible = state in ["playing","paused"]
 	var playing_ui := state in ["playing","paused"]
+	companions.visible = state in ["playing","paused","upgrade"]
 	player_actor.visible = playing_ui and (invulnerable <= 0 or int(invulnerable*15)%2 == 0)
 	header_panel.visible = playing_ui
 	brand.text = "LAST BULLET • ADMIN" if admin_enabled else "LAST BULLET"
@@ -617,6 +648,7 @@ func _physics_process(delta: float) -> void:
 		challenge_complete = true
 		finish_run()
 		return
+	adventure_delta = delta
 	if mode == "campaign" and advance_campaign(): return
 	feedback = maxf(0,feedback-delta)
 	wave = 1+active_stage+campaign_room-1 if mode == "campaign" else 1 + int(elapsed / (15 if mode == "blitz" else 20))
@@ -634,13 +666,14 @@ func _physics_process(delta: float) -> void:
 	player_lean = lerpf(player_lean,movement.x*0.12,1-exp(-delta*12))
 	if movement.length() > 0.1:
 		aim = movement.normalized()
-	player += movement * Balance.PLAYER_SPEED * delta
+	player += movement * Balance.PLAYER_SPEED * float(run_stats.speed) * delta
 	player = player.clamp(Balance.ARENA.position+Vector2(18,18),Balance.ARENA.end-Vector2(18,18))
 	player = Geometry.resolve_all(player,18,world_obstacles())
 	player_actor.position = player
 	player_actor.moving = player_moving
 	player_actor.target_lean = player_lean
 	player_actor.flash = maxf(0,invulnerable-1.1)*0.8 if invulnerable <= 1.2 else 0.0
+	companions.advance(delta)
 	combat.advance(delta)
 	if state != "playing": return
 	if mode == "campaign":
@@ -651,6 +684,7 @@ func _physics_process(delta: float) -> void:
 		if state != "playing": return
 	var enemy_delta := delta
 	for enemy in enemies.duplicate():
+		if mode == "practice": continue
 		if not is_instance_valid(enemy):
 			continue
 		var target := Geometry.navigate(enemy.position,player,enemy.radius,world_obstacles()) if enemy.kind != 5 else player
@@ -663,7 +697,7 @@ func _physics_process(delta: float) -> void:
 		if state == "results":
 			return
 	spawn_timer -= delta
-	if spawn_timer <= 0 and not (mode == "campaign" and boss_spawned):
+	if spawn_timer <= 0 and mode not in ["campaign","practice"]:
 		spawn_timer = maxf(0.32,1.4 - wave * 0.07) if mode != "blitz" else [1.2,0.95,0.8,0.7,0.6,0.5][mini(wave-1,5)]
 		if mode == "campaign": spawn_timer = maxf(0.5,1.3-active_stage*0.1-campaign_room*0.08)
 		if enemies.size() < (36 if mode == "campaign" else Balance.MAX_ENEMIES):
@@ -689,7 +723,7 @@ func _physics_process(delta: float) -> void:
 		audio.play_event("boss_warning")
 	for i in range(pickups.size()-1,-1,-1):
 		var distance := player.distance_to(pickups[i])
-		if distance < 115:
+		if distance < (240 if run_pet == 1 else 115):
 			pickups[i] = pickups[i].move_toward(player,delta*430)
 		if distance < 24:
 			pickups.remove_at(i)
@@ -701,12 +735,16 @@ func _physics_process(delta: float) -> void:
 		level += 1
 		show_upgrades()
 	check_missions()
+	if mode == "practice":
+		adventure.practice_tick(delta)
+		update_hud()
+		return
 	if not milestone_claimed[0] and elapsed >= 120:
 		milestone_claimed[0] = true
-		grant_tickets(1)
+		if progress.mark(adventure.run_id+":milestone:0"): grant_tickets(1)
 	if not milestone_claimed[1] and kills >= 30:
 		milestone_claimed[1] = true
-		grant_tickets(1)
+		if progress.mark(adventure.run_id+":milestone:1"): grant_tickets(1)
 	update_hud()
 	queue_redraw()
 
@@ -750,6 +788,8 @@ func spawn_enemy(kind: int) -> void:
 	enemy.physics_interpolation_mode = Node.PHYSICS_INTERPOLATION_MODE_ON
 	enemy.reset_physics_interpolation()
 	enemies.append(enemy)
+	var key := "boss:"+str(active_stage) if kind == 3 and mode == "campaign" else "monster:"+str(kind)
+	if progress.discover(key): save_profile()
 	if kind == 3:
 		boss = enemy
 
@@ -759,8 +799,10 @@ func damage_enemy(enemy: ArenaEnemy, damage: float, impact := false, incoming :=
 	if impact and enemy.blocks(incoming):
 		audio.play_event("bounce",0.8)
 		return
+	if run_stats.get("legend_cold",false) and enemy.chilled > 0: damage *= 1.15
 	audio.play_event("enemy_hit")
 	effects.burst(enemy.position,Color("ffc39a"),"hit",incoming)
+	if mode == "practice": adventure.practice_damage += minf(damage,enemy.hp)
 	enemy.hp -= damage
 	enemy.flash = 0.08
 	if enemy.hp > 0:
@@ -783,6 +825,7 @@ func damage_enemy(enemy: ArenaEnemy, damage: float, impact := false, incoming :=
 		notice("BOSS DEFEATED!")
 	enemies.erase(enemy)
 	enemy.queue_free()
+	if run_stats.get("legend_fire",false) and enemy.burning > 0: combat.area_damage(enemy.position,75,combat.damage()*0.5)
 	enemy_killed.emit(points)
 	if was_boss and mode == "campaign":
 		campaign_won = true
@@ -815,12 +858,12 @@ func upgrade_delta(index: int) -> String:
 		15: return "Lưỡi xoay: %d → %d • tầm 78" % [current,next]
 	return ""
 
-func show_upgrades() -> void:
+func show_upgrades(restored := []) -> void:
 	var available: Array[int] = []
 	for i in range(upgrades.size()):
 		if upgrades[i] < Balance.UPGRADE_CAPS[i]: available.append(i)
 	if available.is_empty():
-		hp = mini(5,hp+1)
+		hp = mini(max_hp,hp+1)
 		return
 	state = "upgrade"
 	reset_stick()
@@ -830,7 +873,11 @@ func show_upgrades() -> void:
 	cards.add_theme_constant_override("separation",16)
 	(cards.get_child(1) as Label).horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	(cards.get_child(1) as Label).add_theme_color_override("font_color",Color("8eb8c7"))
-	available.shuffle()
+	if restored.is_empty(): available.shuffle()
+	else:
+		available.clear()
+		for id in restored:
+			if id is int and id in range(upgrades.size()) and upgrades[id] < Balance.UPGRADE_CAPS[id] and not available.has(id): available.append(id)
 	offered_upgrades.clear()
 	for i in range(mini(3,available.size())): offered_upgrades.append(available[i])
 	var names := Balance.UPGRADE_NAMES
@@ -859,6 +906,7 @@ func show_upgrades() -> void:
 		var delta := result_label(content,upgrade_delta(index),22)
 		delta.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
 		for label in [name_label,hint,delta]: label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	adventure.capture_offer()
 	_physics_process(0)
 
 func choose_upgrade(index: int) -> void:
@@ -870,8 +918,12 @@ func choose_upgrade(index: int) -> void:
 	state = "playing"
 	upgrade_shade.hide()
 	overlay.hide()
+	adventure.after_upgrade()
 
 func finish_run() -> void:
+	if mode == "practice":
+		rpg_ui.practice()
+		return
 	if state == "results" or result_paid:
 		return
 	check_missions()
@@ -886,15 +938,27 @@ func finish_run() -> void:
 	elif mode != "campaign":
 		best_score = maxi(best_score,total)
 	var reward := mini(50,int(kills/5)+int(elapsed/30))
-	if mode == "campaign" and campaign_won:
-		var first := not campaign_cleared.has(active_stage)
-		if first: campaign_cleared.append(active_stage)
-		campaign_unlocked = maxi(campaign_unlocked,mini(5,active_stage+2))
-		preferred_stage = mini(4,active_stage+1)
-		var stars := 1+(1 if hp >= 3 else 0)+(1 if elapsed <= float(Campaign.data(active_stage).at)+60 else 0)
-		campaign_stars[active_stage] = maxi(campaign_stars[active_stage],stars)
-		reward += 40+active_stage*20
-		grant_tickets(3 if first else 1)
+	if mode == "campaign":
+		if campaign_won:
+			var first: bool = progress.hard_stars[active_stage] == 0 if adventure.hard else not campaign_cleared.has(active_stage)
+			var stars := 1+(1 if hp >= ceili(max_hp*0.6) else 0)+(1 if elapsed <= 300 else 0)
+			if adventure.hard:
+				progress.hard_stars[active_stage] = maxi(progress.hard_stars[active_stage],stars)
+			else:
+				if not campaign_cleared.has(active_stage): campaign_cleared.append(active_stage)
+				campaign_unlocked = maxi(campaign_unlocked,mini(5,active_stage+2))
+				preferred_stage = mini(4,active_stage+1)
+				campaign_stars[active_stage] = maxi(campaign_stars[active_stage],stars)
+			var loot: Dictionary = progress.loot(active_stage,adventure.hard,first)
+			reward += int(loot.gold)
+			loot["pet"] = -1
+			if not adventure.hard and not progress.pets.has(active_stage+1):
+				progress.pets.append(active_stage+1); loot["pet"] = active_stage+1
+			loot["run_id"] = adventure.run_id; loot["stage"] = active_stage; loot["hard"] = adventure.hard
+			progress.last_loot = loot.duplicate(true)
+			summon.tickets += 3 if first else 1
+			run_tickets += 3 if first else 1
+		adventure.finish()
 	if mode == "blitz" and challenge_complete: grant_tickets(1)
 	coins += reward
 	run_coins = reward+mission_coins
@@ -927,7 +991,7 @@ func show_results() -> void:
 	clear_cards("HOÀN THÀNH!" if won else "THỬ LẠI NHÉ!", "")
 	cards.get_child(1).hide()
 	cards.add_theme_constant_override("separation",14)
-	result_label(cards,Campaign.data(active_stage).name if mode == "campaign" else "BLITZ • 90 GIÂY" if mode == "blitz" else "SINH TỒN",24,Color("8eb8c7"))
+	result_label(cards,(("KHÓ • " if adventure.hard else "")+Campaign.data(active_stage).name) if mode == "campaign" else "BLITZ • 90 GIÂY" if mode == "blitz" else "SINH TỒN",24,Color("8eb8c7"))
 	var portrait := Preview.new()
 	portrait.name = "ResultRobot"
 	portrait.actor = selected_robot
@@ -940,11 +1004,11 @@ func show_results() -> void:
 	portrait.modulate.a = 0
 	reveal.tween_property(portrait,"modulate:a",1.0,0.3)
 	if mode == "campaign" and campaign_won:
-		result_label(cards,"★".repeat(campaign_stars[active_stage]),34,Color("ffd184"))
+		result_label(cards,"★".repeat(progress.hard_stars[active_stage] if adventure.hard else campaign_stars[active_stage]),34,Color("ffd184"))
 	if new_record:
 		result_label(cards,"KỶ LỤC MỚI! +%d" % (score+int(elapsed)-previous_record),24,Color("ffd184"))
 	elif mode == "campaign" and campaign_won and active_stage < 4:
-		result_label(cards,"ĐÃ MỞ MÀN %02d" % (active_stage+2),22,Color("8ffff0"))
+		result_label(cards,"HOÀN THÀNH PHÓ BẢN KHÓ" if adventure.hard else "ĐÃ MỞ MÀN %02d" % (active_stage+2),22,Color("8ffff0"))
 	var stats := HBoxContainer.new()
 	stats.name = "ResultStats"
 	stats.add_theme_constant_override("separation",12)
@@ -976,7 +1040,8 @@ func show_results() -> void:
 		NeonArt.style_button(claim,Color("ffd184"),true)
 	var primary: Button
 	if mode == "campaign":
-		primary = add_button("MÀN TIẾP THEO" if campaign_won and active_stage < 4 else "CHƠI LẠI",start_campaign.bind(active_stage+1 if campaign_won and active_stage < 4 else active_stage))
+		var can_next: bool = campaign_won and active_stage < 4 and (not adventure.hard or campaign_cleared.has(active_stage+1) or admin_enabled)
+		primary = add_button("MÀN TIẾP THEO" if can_next else "CHƠI LẠI",start_campaign.bind(active_stage+1 if can_next else active_stage))
 	else:
 		primary = add_button("CHƠI LẠI",start_run.bind(mode,arena_layout))
 	primary.name = "ResultPrimary"
@@ -991,6 +1056,10 @@ func show_results() -> void:
 		secondary.add_child(stages)
 		stages.custom_minimum_size = Vector2(0,80)
 		stages.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	if mode == "campaign" and campaign_won and progress.last_loot.get("run_id","") == adventure.run_id:
+		var chest := add_button("RƯƠNG",rpg_ui.loot_receipt)
+		cards.remove_child(chest); secondary.add_child(chest)
+		chest.custom_minimum_size = Vector2(0,80); chest.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	var home := add_button("VỀ SẢNH",show_menu)
 	cards.remove_child(home)
 	secondary.add_child(home)
@@ -1034,9 +1103,9 @@ func notice(text: String) -> void:
 
 func update_hud() -> void:
 	var clock := time_text() if mode != "blitz" else "%02d:%02d" % [int(maxf(0,90-elapsed))/60,int(maxf(0,90-elapsed))%60]
-	hud.text = "HP %d/5    %s    %s %d\nSCORE %d  •  KILL ×%d" % [hp,clock,"WAVE" if mode != "blitz" else "BLITZ",wave,score+int(elapsed),combo]
+	hud.text = "HP %d/%d    %s    %s %d\nSCORE %d  •  KILL ×%d" % [hp,max_hp,clock,"WAVE" if mode != "blitz" else "BLITZ",wave,score+int(elapsed),combo]
 	weapon_label.text = "%s • LV %d" % [Shooter.WEAPONS[combat.weapon_id()],level]
-	if mode == "campaign": weapon_label.text += "  •  S%d R%d" % [active_stage+1,campaign_room]
+	if mode == "campaign": weapon_label.text += " • S%d P%d/5" % [active_stage+1,campaign_room]
 	xp_bar.max_value = xp_required()
 	xp_bar.value = xp
 	mission_label.text = "HẠ ĐỊCH %d/15 • KỸ NĂNG %d/3 • CHUỖI %d/10" % [mini(kills,15),mini(combat.skill_uses,3),mini(best_combo,10)]
@@ -1075,7 +1144,11 @@ func _draw() -> void:
 
 
 func hurt_player(source: Vector2) -> void:
+	if mode == "practice": return
 	if (admin_enabled and admin_god) or invulnerable > 0 or state != "playing":
+		return
+	if companions.block():
+		invulnerable = 0.3
 		return
 	if combat.shield > 0 and combat.shield_hits > 0:
 		combat.shield_hits -= 1
@@ -1091,17 +1164,20 @@ func hurt_player(source: Vector2) -> void:
 		finish_run()
 
 func check_missions() -> void:
-	var progress := [kills,combat.skill_uses,best_combo]
+	if mode == "practice": return
+	var mission_values := [kills,combat.skill_uses,best_combo]
 	var goals := [15,3,10]
 	for i in range(3):
-		if not mission_claimed[i] and progress[i] >= goals[i]:
+		if not mission_claimed[i] and mission_values[i] >= goals[i]:
 			mission_claimed[i] = true
+			if not progress.mark(adventure.run_id+":mission:"+str(i)): continue
+			progress.sweep_tickets += 1
 			coins += 15
 			mission_coins += 15
 			grant_tickets(1)
 			save_profile()
 			audio.play_event("level_up")
-			notice("MISSION • +15 COINS +1 TICKET")
+			notice("NV +15 VÀNG • +1 VÉ • +1 VÉ QUÉT")
 
 func load_profile() -> void:
 	selected_weapon = -1
@@ -1136,6 +1212,7 @@ func load_profile() -> void:
 	preferred_layout = str(config.get_value("lobby","layout","open"))
 	if preferred_layout not in ["open","reflector"]: preferred_layout = "open"
 	preferred_stage = clampi(int(config.get_value("lobby","stage",-1)),-1,4)
+	campaign_hard = bool(config.get_value("lobby","hard",false))
 	summon.read(config)
 	campaign_unlocked = clampi(int(config.get_value("campaign","unlocked",1)),1,5)
 	campaign_cleared.clear()
@@ -1154,6 +1231,7 @@ func load_profile() -> void:
 		admin_god = bool(config.get_value("admin","god",true))
 		admin_max_start = bool(config.get_value("admin","max_start",false))
 		admin_free_skill = bool(config.get_value("admin","free_skill",config.get_value("admin","free_deflect",false)))
+	progress.read(config,admin_enabled,campaign_cleared)
 	audio.enabled = sound_on
 
 func save_profile() -> void:
@@ -1179,11 +1257,15 @@ func save_profile() -> void:
 	config.set_value("lobby","mode",preferred_mode)
 	config.set_value("lobby","layout",preferred_layout)
 	config.set_value("lobby","stage",preferred_stage)
+	config.set_value("lobby","hard",campaign_hard)
 	summon.write(config)
 	config.set_value("campaign","unlocked",campaign_unlocked)
 	config.set_value("campaign","cleared",campaign_cleared)
 	config.set_value("campaign","stars",campaign_stars)
-	config.save(save_path)
+	progress.write(config)
+	var error := config.save(save_path+".tmp")
+	if error == OK: error = DirAccess.rename_absolute(ProjectSettings.globalize_path(save_path+".tmp"),ProjectSettings.globalize_path(save_path))
+	if error != OK: push_error("Không lưu được profile: "+str(error))
 
 func show_skins() -> void:
 	show_menu()
@@ -1466,46 +1548,27 @@ func world_obstacles() -> Array[Rect2]:
 
 func show_campaign() -> void:
 	show_menu()
-	clear_cards("CAMPAIGN","Five stages • 3 combat waves + boss each.\nUpgrades carry within a stage. First clear: 3 tickets; replay: 1.")
-	cards.add_theme_constant_override("separation",12)
+	clear_cards("PHÓ BẢN","5 khu vực × 5 phòng • Giao tranh → Tinh anh → Tiếp tế → Sự kiện → Boss\nThắng giữ đồ, thua vẫn giữ đồ đã nhận. Tiếp tục tại đầu phòng đã lưu.")
+	if adventure.valid_checkpoint(progress.checkpoint): add_button("TIẾP TỤC PHÒNG %d/5 • ẢI %02d" % [int(progress.checkpoint.room)+1,int(progress.checkpoint.stage)+1],adventure.resume)
+	add_button("ĐỘ KHÓ: "+("KHÓ" if campaign_hard else "THƯỜNG"),func(): campaign_hard = not campaign_hard; save_profile(); show_campaign())
 	for i in range(5):
-		var unlocked := admin_enabled or i < campaign_unlocked
+		var unlocked := admin_enabled or (campaign_cleared.has(i) if campaign_hard else i < campaign_unlocked)
+		var stars: int = progress.hard_stars[i] if campaign_hard else campaign_stars[i]
 		var label := "%02d • %s" % [i+1,Campaign.data(i).name]
-		label += "  "+"★".repeat(campaign_stars[i]) if unlocked else " • LOCKED"
+		label += "  "+"★".repeat(stars) if unlocked else " • KHÓA"
 		var button := add_button(label,show_stage_brief.bind(i))
-		button.add_theme_font_size_override("font_size",24)
-		button.disabled = not unlocked
-	add_button("BACK",show_modes)
+		button.add_theme_font_size_override("font_size",24); button.disabled = not unlocked
+	add_button("VỀ SẢNH",show_menu)
 
 func start_campaign(stage: int) -> void:
-	if stage < 0 or stage >= 5 or (not admin_enabled and stage >= campaign_unlocked): return
-	active_stage = stage
-	start_run("campaign","campaign")
-	notice("STAGE %d • %s" % [stage+1,Campaign.data(stage).name])
+	if stage not in range(5) or (not admin_enabled and (not campaign_cleared.has(stage) if campaign_hard else stage >= campaign_unlocked)): return
+	adventure.start(stage,campaign_hard)
 
 func advance_campaign() -> bool:
-	var data: Dictionary = Campaign.data(active_stage)
-	var next_room := mini(3,1+int(elapsed/(float(data.at)/3)))
-	if next_room > campaign_room and not boss_spawned:
-		campaign_room = next_room
-		level += 1
-		show_upgrades()
-		notice("WAVE %d/3 • %s" % [campaign_room,data.name])
-		return state != "playing"
-	if elapsed >= float(data.at) and not boss_spawned:
-		# Clear remaining normal mobs to make the boss pattern readable.
-		for enemy in enemies:
-			remove_child(enemy)
-			enemy.queue_free()
-		enemies.clear()
-		boss = null
-		spawn_enemy(3)
-		boss_spawned = is_instance_valid(boss)
-		notice("BOSS • %s" % data.boss)
-		audio.play_event("boss_warning")
-	return false
+	return adventure.advance(adventure_delta)
 
 func grant_tickets(amount: int) -> void:
+	if mode == "practice": return
 	if amount <= 0: return
 	summon.tickets += amount
 	run_tickets += amount
@@ -1576,11 +1639,15 @@ func show_summon_results() -> void:
 	add_button("MAIN MENU",show_menu)
 
 func show_stage_brief(stage: int) -> void:
-	if stage < 0 or stage > 4 or (not admin_enabled and stage >= campaign_unlocked): return
 	var data: Dictionary = Campaign.data(stage)
-	clear_cards("%02d • %s" % [stage+1,data.name],"3 combat waves → %s\nBoss enters at %d seconds.\n\n%s\n\nFirst clear: 3 tickets. Repeat: 1. Stars: clear, HP 3+, finish within 60s after boss arrival. Upgrades carry across waves." % [data.boss,int(data.at),data.tip])
-	add_button("START STAGE",start_campaign.bind(stage))
-	add_button("BACK",show_campaign)
+	clear_cards("ẢI %02d • %s" % [stage+1,data.name],"%s • 5 phòng • thời gian tùy bộ trang bị\nBoss: %s\n3 sao: thắng, còn ít nhất 60%% HP tối đa, hoàn thành trong 5 phút.\nLần đầu: 3 vé summon + đồ Sử thi cố định độ hiếm; Thường mở pet %s.\nChơi lại: vàng/vật liệu + 1 vé summon, %d%% rơi đồ.\nBắt đầu mới sẽ thay lượt Campaign đang lưu." % ["KHÓ" if campaign_hard else "THƯỜNG",data.boss,Progress.PETS[stage+1],55 if campaign_hard else 35])
+	var strip: HBoxContainer = rpg_ui.room_strip()
+	cards.move_child(strip,1)
+	add_button("BẮT ĐẦU MỚI",start_campaign.bind(stage))
+	if adventure.valid_checkpoint(progress.checkpoint): add_button("TIẾP TỤC LƯỢT ĐÃ LƯU",adventure.resume)
+	add_button("CÀN QUÉT ×1 / ×5 / ×10",rpg_ui.sweep.bind(stage,campaign_hard))
+	add_button("NGUỒN ĐỒ & PET",rpg_ui.sources.bind("pet",stage+1))
+	add_button("VỀ PHÓ BẢN",show_campaign)
 
 func show_summon_rules() -> void:
 	clear_cards("SUMMON RULES","BASE RATES (before pity)\nRare 75%: Volt, Cobalt, Scout (25% each)\nEpic 20%: Frost, Ember (10% each)\nLegendary 5%: Nova\nAegis is your free starter, not in this pool.\n\nGUARANTEES\nAfter 9 Rare pulls, the next pull is Epic or Legendary: a Rare result is promoted to Epic.\nAfter 49 pulls without Legendary, pull 50 is Legendary. Legendary resets both meters; Epic resets only Epic+.\n\nDUPLICATES & EXCHANGE\nRare +5 / Epic +15 / Legendary +50 universal robot shards. Exchange Rare for 30, Epic for 90, Legendary for 300 shards. Owned robots remain owned.\n\nTICKETS\n5 starter tickets, +1 per run mission, +1 at 120 seconds and 30 kills once each per run, +1 for completed Blitz. Campaign first clear +3; replay clear +1. No payments or ads.")
@@ -1605,7 +1672,9 @@ func primary_stage() -> int:
 	return preferred_stage if preferred_stage >= 0 and (admin_enabled or preferred_stage <= latest) else latest
 
 func play_primary() -> void:
-	if preferred_mode == "campaign": start_campaign(primary_stage())
+	if preferred_mode == "campaign":
+		if adventure.valid_checkpoint(progress.checkpoint): adventure.resume()
+		else: start_campaign(primary_stage())
 	else: start_run(preferred_mode,preferred_layout)
 
 func show_primary_selection() -> void:
@@ -1615,6 +1684,7 @@ func show_primary_selection() -> void:
 func show_profile_menu() -> void:
 	state = "menu"
 	clear_cards("HỒ SƠ","%s\nRobot: %s\nSurvival: %d • Blitz: %d" % ["ADMIN • Đang bật" if admin_enabled else "CHẾ ĐỘ CHƠI THƯỜNG",RobotRoster.NAMES[selected_robot],best_score,blitz_best])
+	add_button("TRANG BỊ • PET • THƯ VIỆN",rpg_ui.hub)
 	add_button("QUẢN TRỊ / ADMIN",show_admin)
 	add_button("CÀI ĐẶT",show_settings)
 	add_button("HƯỚNG DẪN",show_help)
@@ -1643,13 +1713,13 @@ func show_wallet() -> void:
 
 func show_lobby_missions() -> void:
 	state = "menu"
-	clear_cards("NHIỆM VỤ","Mỗi trận có 3 mục tiêu. Mỗi mục tiêu trả tự động 15 vàng + 1 vé, một lần/trận. Bắt đầu trận mới sẽ đặt lại tiến độ.")
+	clear_cards("NHIỆM VỤ","Mỗi trận có 3 mục tiêu. Mỗi mục tiêu trả tự động 15 vàng + 1 vé summon + 1 vé càn quét, một lần/trận. Bắt đầu trận mới sẽ đặt lại tiến độ.")
 	var goals := [15,3,10]
-	var progress := [kills,combat.skill_uses,best_combo]
+	var mission_values := [kills,combat.skill_uses,best_combo]
 	var names := ["Hạ địch","Dùng kỹ năng","Chuỗi hạ địch"]
 	for i in range(3):
 		var label := Label.new()
-		label.text = "%s  %d/%d\n%s" % [names[i],mini(progress[i],goals[i]),goals[i],"ĐÃ TỰ ĐỘNG NHẬN" if mission_claimed[i] else "+15 vàng • +1 vé"]
+		label.text = "%s  %d/%d\n%s" % [names[i],mini(mission_values[i],goals[i]),goals[i],"ĐÃ TỰ ĐỘNG NHẬN" if mission_claimed[i] else "+15 vàng • +1 vé summon • +1 vé quét"]
 		label.add_theme_font_size_override("font_size",26)
 		label.add_theme_color_override("font_color",Color("8bffe1") if mission_claimed[i] else Color("c8e3eb"))
 		cards.add_child(label)
