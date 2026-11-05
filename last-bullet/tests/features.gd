@@ -152,11 +152,11 @@ func run() -> void:
 	var touch := InputEventScreenTouch.new()
 	touch.index = 1
 	touch.pressed = true
-	touch.position = Vector2(135,1135)
+	touch.position = Vector2(135+game.horizontal_padding,1135)
 	game._unhandled_input(touch)
 	var drag := InputEventScreenDrag.new()
 	drag.index = 1
-	drag.position = Vector2(200,1135)
+	drag.position = Vector2(200+game.horizontal_padding,1135)
 	game._unhandled_input(drag)
 	var before: Vector2 = game.player
 	game._physics_process(0.02)
@@ -166,7 +166,7 @@ func run() -> void:
 	game.deflect_button.button_down.emit()
 	assert(game.bullet.boost > 0 and game.joystick_id == 1)
 	touch.pressed = false
-	touch.position = Vector2(580,1135)
+	touch.position = Vector2(580+game.horizontal_padding,1135)
 	game._input(touch)
 	assert(game.joystick_id == -1 and game.joystick == Vector2.ZERO)
 	# Card selection only accepts offered upgrades and respects limits.

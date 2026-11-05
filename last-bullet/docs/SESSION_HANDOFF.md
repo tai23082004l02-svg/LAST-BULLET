@@ -56,3 +56,7 @@ The user requested an Archer Hunter-style hidden floating joystick after finding
 ## Correction: full-screen movement gestures
 
 The user clarified that movement must start anywhere on the screen, not just the left half. All blank screen space inside the safe area can now start the hidden floating joystick. Pause and Deflect explicitly exclude their button rectangles, and GUI buttons keep their normal event handling. Passive progress bars ignore pointer input. The ring follows touches on either side; initial touch remains the movement anchor. Existing multi-touch ownership and release behavior are preserved. Automated tests now exercise a right-side drag, both button exclusions and safe-area bounds. This supersedes left-half-only descriptions above; physical-device feel awaits user confirmation.
+
+## Latest results-screen redesign
+
+Implemented the approved compact mobile results screen; read RESULTS_UI.md. Three stat tiles, robot/stars, reward row, once-only immediate x2, retry/next-stage primary CTA, stage/home secondary actions, collapsible advanced stats. Tested results/campaign/features/lobby and rendered 360×640/800; await physical-device feedback. Touch controls remain drag-anywhere except buttons, with a 12-logical-pixel activation threshold; a tap alone does not activate the ring or movement.

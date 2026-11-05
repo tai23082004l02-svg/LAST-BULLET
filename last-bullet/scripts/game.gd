@@ -873,21 +873,103 @@ func finish_run() -> void:
 	show_results()
 	run_ended.emit()
 
+func result_label(parent: Node, text: String, font_size := 24, color := Color("d9fbff")) -> Label:
+	var label := Label.new()
+	label.text = text
+	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	label.add_theme_font_size_override("font_size",font_size)
+	label.add_theme_color_override("font_color",color)
+	parent.add_child(label)
+	return label
+
 func show_results() -> void:
 	state = "results"
-	clear_cards("CAMPAIGN RESULTS" if mode == "campaign" else "BLITZ RESULTS" if mode == "blitz" else "RUN COMPLETE",final_summary+"\n"+next_skin_hint()+"\nWALLET %d" % coins)
-	cards.add_theme_constant_override("separation",12)
+	reset_stick()
+	var won := campaign_won if mode == "campaign" else challenge_complete
+	clear_cards("HOÀN THÀNH!" if won else "THỬ LẠI NHÉ!", "")
+	cards.get_child(1).hide()
+	cards.add_theme_constant_override("separation",14)
+	result_label(cards,Campaign.data(active_stage).name if mode == "campaign" else "BLITZ • 90 GIÂY" if mode == "blitz" else "SINH TỒN",24,Color("8eb8c7"))
+	var portrait := Preview.new()
+	portrait.name = "ResultRobot"
+	portrait.actor = selected_robot
+	portrait.actor_width = 140
+	portrait.custom_minimum_size = Vector2(0,150)
+	cards.add_child(portrait)
+	portrait.modulate = Color("baffed") if won else Color("b0c5db")
+	portrait.pivot_offset = Vector2(280,75)
+	var reveal := portrait.create_tween()
+	portrait.modulate.a = 0
+	reveal.tween_property(portrait,"modulate:a",1.0,0.3)
+	if mode == "campaign" and campaign_won:
+		result_label(cards,"★".repeat(campaign_stars[active_stage]),34,Color("ffd184"))
+	if new_record:
+		result_label(cards,"KỶ LỤC MỚI! +%d" % (score+int(elapsed)-previous_record),24,Color("ffd184"))
+	elif mode == "campaign" and campaign_won and active_stage < 4:
+		result_label(cards,"ĐÃ MỞ MÀN %02d" % (active_stage+2),22,Color("8ffff0"))
+	var stats := HBoxContainer.new()
+	stats.name = "ResultStats"
+	stats.add_theme_constant_override("separation",12)
+	cards.add_child(stats)
+	var values := [str(score+int(elapsed)),time_text(),str(kills)]
+	var labels := ["ĐIỂM","THỜI GIAN","HẠ ĐỊCH"]
+	for i in range(3):
+		var panel := PanelContainer.new()
+		panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		panel.custom_minimum_size.y = 100
+		panel.add_theme_stylebox_override("panel",NeonArt.panel(Color("102b3b"),Color("386573"),12))
+		stats.add_child(panel)
+		var column := VBoxContainer.new()
+		panel.add_child(column)
+		result_label(column,values[i],30)
+		result_label(column,labels[i],18,Color("8eb8c7"))
+	var rewards := HBoxContainer.new()
+	rewards.name = "ResultRewards"
+	rewards.alignment = BoxContainer.ALIGNMENT_CENTER
+	rewards.add_theme_constant_override("separation",32)
+	cards.add_child(rewards)
+	result_label(rewards,"◉ +%d VÀNG" % (run_coins*(2 if double_claimed else 1)),26,Color("ffd184"))
+	result_label(rewards,"▣ +%d VÉ" % run_tickets,26,Color("8adfff"))
 	if run_coins > 0:
-		add_button("CLAIM X2 GOLD • +%d" % run_coins if not double_claimed else "X2 CLAIMED • +%d" % run_coins,claim_double_gold)
-		(cards.get_child(cards.get_child_count()-1) as Button).disabled = double_claimed
+		var claim := add_button("ĐÃ NHẬN X2 VÀNG" if double_claimed else "NHẬN X2 VÀNG • +%d" % run_coins,claim_double_gold)
+		claim.name = "ResultDouble"
+		claim.custom_minimum_size.y = 80
+		claim.disabled = double_claimed or reward_profile_path != save_path
+		NeonArt.style_button(claim,Color("ffd184"),true)
+	var primary: Button
 	if mode == "campaign":
-		if campaign_won and active_stage < 4: add_button("NEXT STAGE",start_campaign.bind(active_stage+1))
-		add_button("RETRY STAGE",start_campaign.bind(active_stage))
-		add_button("STAGE SELECT",show_campaign)
+		primary = add_button("MÀN TIẾP THEO" if campaign_won and active_stage < 4 else "CHƠI LẠI",start_campaign.bind(active_stage+1 if campaign_won and active_stage < 4 else active_stage))
 	else:
-		add_button("RETRY",start_run.bind(mode,arena_layout))
-	add_button("SUMMON",show_summon)
-	add_button("MAIN MENU",show_menu)
+		primary = add_button("CHƠI LẠI",start_run.bind(mode,arena_layout))
+	primary.name = "ResultPrimary"
+	primary.custom_minimum_size.y = 106
+	NeonArt.style_button(primary,Color("8ffff0"),true)
+	var secondary := HBoxContainer.new()
+	secondary.add_theme_constant_override("separation",12)
+	cards.add_child(secondary)
+	if mode == "campaign":
+		var stages := add_button("CHỌN MÀN",show_campaign)
+		cards.remove_child(stages)
+		secondary.add_child(stages)
+		stages.custom_minimum_size = Vector2(0,80)
+		stages.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	var home := add_button("VỀ SẢNH",show_menu)
+	cards.remove_child(home)
+	secondary.add_child(home)
+	home.custom_minimum_size = Vector2(0,80)
+	home.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	var details := add_button("CHI TIẾT TRẬN ▾",func(): pass)
+	details.name = "ResultDetailsToggle"
+	details.custom_minimum_size.y = 64
+	details.add_theme_font_size_override("font_size",22)
+	var detail_text := result_label(cards,"PERFECT %d • CHUỖI CAO NHẤT %d\nDEFLECT %d/%d (%d%%)" % [perfect_count,best_perfect_chain,deflect_successes,attempts,deflect_rate()],22,Color("8eb8c7"))
+	detail_text.name = "ResultDetails"
+	detail_text.hide()
+	details.pressed.connect(func():
+		detail_text.visible = not detail_text.visible
+		details.text = "THU GỌN ▴" if detail_text.visible else "CHI TIẾT TRẬN ▾")
 
 func deflect_rate() -> int:
 	return clampi(int(round(100.0*deflect_successes/maxi(1,attempts))),0,100)
