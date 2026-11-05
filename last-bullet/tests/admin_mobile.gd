@@ -89,6 +89,14 @@ func run() -> void:
 	assert(game.overlay.position.y >= 40)
 	assert(game.overlay.position.y+game.overlay.size.y <= 1568)
 	assert(game.joystick_origin.y+76 < 1568)
+	assert(game.joystick_origin.x == 185)
+	var edge: Vector2 = game.comfortable_stick_origin(Vector2(1,1599))
+	assert(edge.x >= 150 and edge.y+76 < 1568)
+	assert(edge.y-76 > Balance.ARENA.end.y)
+	game.joystick = Vector2.ONE
+	game.joystick_id = 3
+	game.reset_stick()
+	assert(game.joystick == Vector2.ZERO and game.joystick_id == -1)
 	assert(Balance.ARENA.has_point(game.bullet.position))
 	game.layout_viewport(Vector2(1000,1280))
 	await process_frame

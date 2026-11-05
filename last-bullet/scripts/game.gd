@@ -125,7 +125,8 @@ var boss_spawned := false
 var best_score := 0
 var joystick_id := -1
 var joystick := Vector2.ZERO
-var joystick_origin := Vector2(135,1135)
+var joystick_origin := Vector2(185,1135)
+var joystick_touch_origin := Vector2.ZERO
 var ui: CanvasLayer
 var hud: Label
 var xp_bar: ProgressBar
@@ -451,11 +452,9 @@ func start_run(run_mode := "survival", layout := "open") -> void:
 func _input(event: InputEvent) -> void:
 	# Release even if a finger ends over a GUI button that consumes the event.
 	if event is InputEventScreenTouch and not event.pressed and event.index == joystick_id:
-		joystick_id = -1
-		joystick = Vector2.ZERO
+		reset_stick()
 	if event is InputEventMouseButton and not event.pressed and joystick_id == -2:
-		joystick_id = -1
-		joystick = Vector2.ZERO
+		reset_stick()
 
 func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_F11 and not OS.has_feature("mobile"):
@@ -478,22 +477,33 @@ func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventScreenTouch:
 		if event.pressed and pointer.x < 340 and pointer.y > Balance.ARENA.end.y+10 and joystick_id == -1:
 			joystick_id = event.index
-			joystick_origin = pointer
+			joystick_origin = comfortable_stick_origin(pointer)
+			joystick_touch_origin = pointer
 		elif not event.pressed and event.index == joystick_id:
 			joystick_id = -1
 			joystick = Vector2.ZERO
 	if event is InputEventScreenDrag and event.index == joystick_id:
-		joystick = ((pointer - joystick_origin) / 70).limit_length()
+		joystick = ((pointer - joystick_touch_origin) / 70).limit_length()
 	# Mouse joystick for desktop preview; keyboard works independently.
 	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
 		if event.pressed and pointer.x < 340 and pointer.y > Balance.ARENA.end.y+10:
 			joystick_id = -2
-			joystick_origin = pointer
+			joystick_origin = comfortable_stick_origin(pointer)
+			joystick_touch_origin = pointer
 		elif not event.pressed and joystick_id == -2:
 			joystick_id = -1
 			joystick = Vector2.ZERO
 	if event is InputEventMouseMotion and joystick_id == -2:
-		joystick = ((pointer - joystick_origin)/70).limit_length()
+		joystick = ((pointer - joystick_touch_origin)/70).limit_length()
+
+func comfortable_stick_origin(pointer: Vector2) -> Vector2:
+	# Floating stick stays in the thumb zone even when a touch starts at an edge.
+	return pointer.clamp(Vector2(150,Balance.ARENA.end.y+112),Vector2(260,canvas_height-safe_margins.y-125))
+
+func reset_stick() -> void:
+	joystick_id = -1
+	joystick = Vector2.ZERO
+	joystick_origin = Vector2(185,canvas_height-safe_margins.y-145)
 
 func request_deflect() -> void:
 	if state == "playing" and cooldown <= 0:
@@ -1305,7 +1315,7 @@ func layout_viewport(size: Vector2, safe := Vector2.ZERO) -> void:
 	boss_bar.position.y = 198+safe.x
 	deflect_button.position = Vector2(475,canvas_height-215-safe.y)
 	deflect_button.size = Vector2(210,155)
-	joystick_origin = Vector2(135,canvas_height-145-safe.y)
+	joystick_origin = Vector2(185,canvas_height-145-safe.y)
 	joystick_id = -1
 	joystick = Vector2.ZERO
 	mission_label.position.y = Balance.ARENA.end.y+5
