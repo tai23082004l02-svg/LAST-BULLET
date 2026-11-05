@@ -11,6 +11,14 @@ var enemies: Array[ArenaEnemy] = []
 var boss: ArenaEnemy
 var pickups: Array[Vector2] = []
 var fires: Array[Dictionary] = []
+const Lobby = preload("res://scripts/mobile_lobby.gd")
+var home_shell: Control
+var safe_margins := Vector2.ZERO
+var preferred_mode := "campaign"
+var preferred_layout := "open"
+var preferred_stage := -1
+var reward_profile_path := ""
+
 const Campaign = preload("res://scripts/campaign_data.gd")
 const Summons = preload("res://scripts/summon_system.gd")
 const Reveal = preload("res://scripts/summon_reveal.gd")
@@ -261,11 +269,22 @@ func build_ui() -> void:
 	mission_label.position = Vector2(40,1025)
 	mission_label.add_theme_font_size_override("font_size",19)
 	root.add_child(mission_label)
+	home_shell = Lobby.new()
+	home_shell.game = self
+	root.add_child(home_shell)
 
-func clear_cards(title: String, subtitle: String) -> void:
+func clear_card_nodes() -> void:
 	for child in cards.get_children():
 		cards.remove_child(child)
 		child.queue_free()
+
+func front_page() -> bool:
+	return state not in ["playing","paused","upgrade","results"] and not (state == "admin" and admin_context)
+
+func clear_cards(title: String, subtitle: String) -> void:
+	clear_card_nodes()
+	home_shell.open_section(title,front_page())
+	layout_modal()
 	cards.add_theme_constant_override("separation",20)
 	overlay.show()
 	if overlay.has_meta("fade"):
@@ -317,29 +336,12 @@ func animate_button(button: Button, target: float) -> void:
 func show_menu() -> void:
 	state = "menu"
 	audio.stop_all()
-	for enemy in enemies:
-		enemy.hide()
-	if is_instance_valid(bullet):
-		bullet.hide()
-	clear_cards("LAST BULLET", "ZORVYKA Games • v0.6.0\n%s\nBEST SCORE %d" % ["ADMIN • ALL CONTENT UNLOCKED" if admin_enabled else "One Shot. Endless Chaos.",best_score])
-	cards.add_theme_constant_override("separation",8)
-	var mascot := Preview.new()
-	mascot.actor = selected_robot
-	mascot.custom_minimum_size = Vector2(500,80)
-	cards.add_child(mascot)
-	cards.move_child(mascot,1)
-	add_button("PLAY", show_modes)
-	add_button("SUMMON • "+("FREE" if admin_enabled else "%d TICKETS" % summon.tickets),show_summon)
-	add_button("ROBOTS • "+RobotRoster.NAMES[selected_robot],show_robots)
-	add_button("SKINS • %d COINS" % coins, show_skins)
-	add_button("SETTINGS", show_settings)
-	add_button("ADMIN • ON" if admin_enabled else "ADMIN",show_admin)
-	if not OS.has_feature("mobile"):
-		add_button("QUIT", func(): get_tree().quit())
-	for child in cards.get_children():
-		if child is Button:
-			child.custom_minimum_size.y = 96
-			child.add_theme_font_size_override("font_size",32)
+	for enemy in enemies: enemy.hide()
+	if is_instance_valid(bullet): bullet.hide()
+	clear_card_nodes()
+	overlay.hide()
+	home_shell.open_home()
+	layout_modal()
 
 func show_help() -> void:
 	clear_cards("ONE SHOT. YOUR CALL.", "1. Move with WASD / arrows, or drag the left joystick. Avoid coral enemies.\n\n2. Aim with movement; the arrow previews your next deflect. Press SPACE inside the outer ring. Catch an incoming bullet inside the gold ring for PERFECT!\n\n3. Collect XP, choose upgrades, complete missions for skin coins. Shields block front hits; dodge yellow marked zones. Your bullet is harmless.\n\nPLAY offers Open, Reflector and 90-second Blitz. Chain Perfect catches for bonus points. After boss release, deflect back while its core is gold for x4 damage. Claim x2 gold instantly on results.")
@@ -354,6 +356,11 @@ func show_modes() -> void:
 	add_button("BACK",show_menu)
 
 func start_run(run_mode := "survival", layout := "open") -> void:
+	home_shell.hide_all()
+	preferred_mode = run_mode
+	preferred_layout = layout if layout in ["open","reflector"] else "open"
+	if run_mode == "campaign": preferred_stage = active_stage
+	save_profile()
 	campaign_room = 1
 	campaign_won = false
 	run_tickets = 0
@@ -394,6 +401,7 @@ func start_run(run_mode := "survival", layout := "open") -> void:
 	perfect_count = 0
 	mission_claimed = [false,false,false]
 	result_paid = false
+	reward_profile_path = ""
 	feedback = 0
 	fire_timer = 0
 	last_deflect_perfect = false
@@ -795,6 +803,7 @@ func finish_run() -> void:
 	check_missions()
 	state = "results"
 	result_paid = true
+	reward_profile_path = save_path
 	var total := score+int(elapsed)
 	previous_record = blitz_best if mode == "blitz" else best_score
 	new_record = mode != "campaign" and total > previous_record
@@ -808,6 +817,7 @@ func finish_run() -> void:
 		var first := not campaign_cleared.has(active_stage)
 		if first: campaign_cleared.append(active_stage)
 		campaign_unlocked = maxi(campaign_unlocked,mini(5,active_stage+2))
+		preferred_stage = mini(4,active_stage+1)
 		var stars := 1+(1 if hp >= 3 else 0)+(1 if perfect_count >= 3 else 0)
 		campaign_stars[active_stage] = maxi(campaign_stars[active_stage],stars)
 		reward += 40+active_stage*20
@@ -865,7 +875,7 @@ func next_skin_hint() -> String:
 
 func claim_double_gold() -> void:
 	# Admin build: instant claim, once per completed run. No ad provider involved.
-	if state != "results" or double_claimed or not result_paid or run_coins <= 0:
+	if state != "results" or double_claimed or not result_paid or run_coins <= 0 or reward_profile_path != save_path:
 		return
 	double_claimed = true
 	coins += run_coins
@@ -1025,6 +1035,11 @@ func load_profile() -> void:
 		if not owned_robots.has(selected_robot): selected_robot = 0
 		sound_on = bool(config.get_value("settings","sound",true))
 		haptics_on = bool(config.get_value("settings","haptics",true))
+	preferred_mode = str(config.get_value("lobby","mode","campaign"))
+	if preferred_mode not in ["campaign","survival","blitz"]: preferred_mode = "campaign"
+	preferred_layout = str(config.get_value("lobby","layout","open"))
+	if preferred_layout not in ["open","reflector"]: preferred_layout = "open"
+	preferred_stage = clampi(int(config.get_value("lobby","stage",-1)),-1,4)
 	summon.read(config)
 	campaign_unlocked = clampi(int(config.get_value("campaign","unlocked",1)),1,5)
 	campaign_cleared.clear()
@@ -1062,6 +1077,9 @@ func save_profile() -> void:
 		config.set_value("admin","god",admin_god)
 		config.set_value("admin","max_start",admin_max_start)
 		config.set_value("admin","free_deflect",admin_free_deflect)
+	config.set_value("lobby","mode",preferred_mode)
+	config.set_value("lobby","layout",preferred_layout)
+	config.set_value("lobby","stage",preferred_stage)
 	summon.write(config)
 	config.set_value("campaign","unlocked",campaign_unlocked)
 	config.set_value("campaign","cleared",campaign_cleared)
@@ -1098,11 +1116,12 @@ func buy_or_equip(index: int) -> void:
 	show_skins()
 
 func show_settings() -> void:
-	clear_cards("SETTINGS","Audio plays locally. No online services.")
+	clear_cards("SETTINGS","Âm thanh, hiệu ứng và điều khiển.")
 	add_button("HOW TO PLAY",show_help)
 	add_button("SOUND: " + ("ON" if sound_on else "OFF"),func(): sound_on = not sound_on; audio.enabled = sound_on; audio.stop_all(); save_profile(); show_settings())
 	add_button("LOW EFFECTS: "+("ON" if low_effects else "OFF"),func(): low_effects = not low_effects; save_profile(); show_settings())
 	add_button("VIBRATION: " + ("ON" if haptics_on else "OFF"),func(): haptics_on = not haptics_on; save_profile(); show_settings())
+	add_button("THÔNG TIN GAME",show_about)
 	add_button("BACK",show_menu)
 
 func admin_profile_path() -> String:
@@ -1253,6 +1272,7 @@ func on_viewport_changed() -> void:
 	layout_viewport(size,safe)
 
 func layout_viewport(size: Vector2, safe := Vector2.ZERO) -> void:
+	safe_margins = safe
 	canvas_height = maxf(1280,size.y)
 	horizontal_padding = maxf(0,(size.x-720)*0.5)
 	position.x = horizontal_padding
@@ -1290,11 +1310,8 @@ func layout_viewport(size: Vector2, safe := Vector2.ZERO) -> void:
 	joystick = Vector2.ZERO
 	mission_label.position.y = Balance.ARENA.end.y+5
 	toast.position.y = Balance.ARENA.end.y-65
-	var height := canvas_height-200-safe.x-safe.y
-	var scroll := cards.get_parent() as ScrollContainer
-	scroll.custom_minimum_size = Vector2(590,height-64)
-	overlay.position = Vector2(35,100+safe.x)
-	overlay.size = Vector2(650,height)
+	home_shell.layout(canvas_height,safe)
+	layout_modal()
 	queue_redraw()
 
 func show_robots(index := -1) -> void:
@@ -1471,3 +1488,91 @@ func show_stage_brief(stage: int) -> void:
 func show_summon_rules() -> void:
 	clear_cards("SUMMON RULES","BASE RATES (before pity)\nRare 75%: Volt, Cobalt, Scout (25% each)\nEpic 20%: Frost, Ember (10% each)\nLegendary 5%: Nova\nAegis is your free starter, not in this pool.\n\nGUARANTEES\nAfter 9 Rare pulls, the next pull is Epic or Legendary: a Rare result is promoted to Epic.\nAfter 49 pulls without Legendary, pull 50 is Legendary. Legendary resets both meters; Epic resets only Epic+.\n\nDUPLICATES & EXCHANGE\nRare +5 / Epic +15 / Legendary +50 universal robot shards. Exchange Rare for 30, Epic for 90, Legendary for 300 shards. Owned robots remain owned.\n\nTICKETS\n5 starter tickets, +1 per run mission, +1 at 120 seconds and 30 kills once each per run, +1 for completed Blitz. Campaign first clear +3; replay clear +1. No payments or ads.")
 	add_button("BACK",show_summon)
+
+func layout_modal() -> void:
+	var top := 144+safe_margins.x if home_shell.visible else 100+safe_margins.x
+	var bottom := canvas_height-144-safe_margins.y if home_shell.visible else canvas_height-100-safe_margins.y
+	var height := maxf(400,bottom-top)
+	var scroll := cards.get_parent() as ScrollContainer
+	scroll.custom_minimum_size = Vector2(590,height-64)
+	overlay.position = Vector2(35,top)
+	overlay.size = Vector2(650,height)
+
+func primary_stage() -> int:
+	var latest := clampi(campaign_unlocked-1,0,4)
+	return preferred_stage if preferred_stage >= 0 and (admin_enabled or preferred_stage <= latest) else latest
+
+func play_primary() -> void:
+	if preferred_mode == "campaign": start_campaign(primary_stage())
+	else: start_run(preferred_mode,preferred_layout)
+
+func show_primary_selection() -> void:
+	if preferred_mode == "campaign": show_campaign()
+	else: show_modes()
+
+func show_profile_menu() -> void:
+	state = "menu"
+	clear_cards("HỒ SƠ","%s\nRobot: %s\nSurvival: %d • Blitz: %d" % ["ADMIN • Đang bật" if admin_enabled else "CHẾ ĐỘ CHƠI THƯỜNG",RobotRoster.NAMES[selected_robot],best_score,blitz_best])
+	add_button("QUẢN TRỊ / ADMIN",show_admin)
+	add_button("CÀI ĐẶT",show_settings)
+	add_button("HƯỚNG DẪN",show_help)
+	add_button("THÔNG TIN GAME",show_about)
+	if not OS.has_feature("mobile"): add_button("THOÁT GAME",func(): get_tree().quit())
+	add_button("VỀ SẢNH",show_menu)
+
+func show_about() -> void:
+	clear_cards("THÔNG TIN","LAST BULLET\nZORVYKA Games\nPhiên bản %s\nOne Shot. Endless Chaos.\n\nWASD / phím mũi tên: di chuyển\nSpace: deflect • Esc: pause\nF11: fullscreen cửa sổ desktop" % str(ProjectSettings.get_setting("application/config/version")))
+	add_button("VỀ SẢNH",show_menu)
+
+static func full_number(value: int) -> String:
+	var digits := str(value)
+	var result := ""
+	for i in range(digits.length()):
+		if i > 0 and (digits.length()-i)%3 == 0: result += ","
+		result += digits[i]
+	return result
+
+func show_wallet() -> void:
+	state = "menu"
+	clear_cards("TÀI NGUYÊN","VÀNG  %s\nVÉ SUMMON  %s\nMẢNH ROBOT  %s\n\nVàng dùng mở skin đạn. Vé dùng summon; mảnh dùng đổi robot. Chạm số ở thanh trên để xem đầy đủ tại đây." % [full_number(coins),full_number(summon.tickets),full_number(summon.shards)])
+	add_button("PHẦN THƯỞNG",show_rewards)
+	add_button("SUMMON",show_summon)
+	add_button("VỀ SẢNH",show_menu)
+
+func show_lobby_missions() -> void:
+	state = "menu"
+	clear_cards("NHIỆM VỤ","Mỗi trận có 3 mục tiêu. Mỗi mục tiêu trả tự động 15 vàng + 1 vé, một lần/trận. Bắt đầu trận mới sẽ đặt lại tiến độ.")
+	var goals := [15,3,10]
+	var progress := [kills,perfect_count,best_combo]
+	var names := ["Hạ địch","Perfect Deflect","Chuỗi hạ địch"]
+	for i in range(3):
+		var label := Label.new()
+		label.text = "%s  %d/%d\n%s" % [names[i],mini(progress[i],goals[i]),goals[i],"ĐÃ TỰ ĐỘNG NHẬN" if mission_claimed[i] else "+15 vàng • +1 vé"]
+		label.add_theme_font_size_override("font_size",26)
+		label.add_theme_color_override("font_color",Color("8bffe1") if mission_claimed[i] else Color("c8e3eb"))
+		cards.add_child(label)
+	add_button("CHƠI NGAY",play_primary)
+	add_button("VỀ SẢNH",show_menu)
+
+func pending_lobby_reward() -> bool:
+	return result_paid and not double_claimed and run_coins > 0 and reward_profile_path == save_path
+
+func claim_lobby_reward() -> void:
+	if not pending_lobby_reward(): return
+	state = "results"
+	claim_double_gold()
+	show_rewards()
+
+func show_rewards() -> void:
+	state = "menu"
+	clear_cards("PHẦN THƯỞNG","Nhiệm vụ và mốc chơi trả thưởng tự động. Vé khởi đầu, thưởng Campaign và mảnh summon đã được cộng vào ví.")
+	if pending_lobby_reward():
+		add_button("NHẬN X2 VÀNG • +%s" % full_number(run_coins),claim_lobby_reward)
+	else:
+		var label := Label.new()
+		label.text = "Không có thưởng chờ nhận.\nHoàn thành trận để nhận vàng;\nx2 có thể nhận một lần ở kết quả hoặc sảnh."
+		label.add_theme_font_size_override("font_size",24)
+		cards.add_child(label)
+	add_button("NHIỆM VỤ",show_lobby_missions)
+	add_button("SUMMON",show_summon)
+	add_button("VỀ SẢNH",show_menu)

@@ -1,7 +1,16 @@
-# LAST BULLET — v0.6.0
+# LAST BULLET — v0.7.0
 ZORVYKA Games • **One Shot. Endless Chaos.**
 
 Godot 4 portrait arcade survival. Exactly one permanent bullet, no external plugins or online runtime services.
+
+## v0.7.0 — Sảnh mobile
+Robot lớn ở giữa: vuốt hoặc dùng mũi tên để xem, chạm để mở chi tiết. Xem thử không đổi robot đang trang bị; nút Trang bị chỉ dành cho robot đã sở hữu.
+
+**CHƠI NGAY** tiếp tục màn chiến dịch đã chọn; nút **…** chọn Survival/Blitz. Thanh dưới: **Sảnh / Robot / Summon / Ngoại hình**. Chạm tài nguyên phía trên để xem số đầy đủ. **Admin nay nằm trong avatar góc trái trên**, cài đặt ở nút bánh răng. Thông tin studio và thoát game desktop nằm trong hồ sơ.
+
+Nhiệm vụ hiển thị tiến độ thật. Phần thưởng cho nhận x2 vàng của trận vừa xong nếu chưa nhận, chỉ một lần và đúng profile; không có quảng cáo, thưởng giả hay nhận trùng.
+
+[Ảnh sảnh mới](docs/previews/v0.7-home.png)
 
 ## v0.6.0 — 5 màn chiến dịch & summon
 **PLAY → CAMPAIGN** để chơi 5 màn có đợt giao tranh, địa hình, boss riêng, sao và mở khóa màn tiếp. **Menu → SUMMON** để triệu hồi robot bằng vé, có ×1/×10, tỷ lệ công khai, bảo hiểm 10/50, hoạt ảnh/Skip, robot trùng thành mảnh và đổi chọn robot.

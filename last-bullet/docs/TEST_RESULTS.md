@@ -1,3 +1,13 @@
+# v0.7.0 validation — 2026-11-05
+
+Godot 4.6.3, Linux Compatibility. All nine existing suites pass: features, smoke, expansion, reflector_stress, graphics, admin_mobile, robots, summon, campaign.
+
+`tests/lobby.gd` covers home/navigation, compact and exact balances, preview ownership guards, primary Blitz routing, safe layouts at logical heights 1280/1600/1800, once-only x2 rewards and profile isolation. Reviewed rendered home, hangar, summon, profile, 360×640 and 360×800 layouts with Xvfb/Mesa. No physical Android device or APK export was tested.
+
+Previewing a robot does not equip or debit. Missions show existing automatic progress; rewards use the last completed run's existing x2 entitlement, with no new fake claims. Admin moved to the top-left avatar.
+
+---
+
 # v0.6.0 validation — 2026-11-05
 
 **Godot 4.6.3**, Linux Compatibility. Script import and existing 7 suites pass after the new systems; roster purchase expectations updated to the approved shard-exchange design.
