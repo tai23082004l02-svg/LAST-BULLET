@@ -1,3 +1,9 @@
+# Double-tap control patch — 2026-11-05
+
+Skill button removed; skill activated by two sequential short taps on blank screen. New tests/double_tap.gd passes timing/distance/hold/drag/cancel/cooldown/multitouch/GUI/state/emulated-mouse cases. Shooting, admin_mobile, upgrade_ui, graphics and lobby regressions rechecked. The suite list below describes the v0.8 baseline; double_tap is now the eleventh suite. Rendered 360×800 layout reviewed; physical-device gesture feel not yet verified.
+
+---
+
 # v0.8.0 validation — 2026-11-05
 
 Godot 4.6.3 Linux Compatibility. Current shooter replaces the v0.7 permanent-bullet rules. Ten current suites pass:

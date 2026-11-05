@@ -1,6 +1,6 @@
 # v0.8 shooter implementation
 
-The approved change replaces permanent-bullet Deflect combat with auto-aim/auto-fire and a robot skill button. Seven weapon profiles and seven skills live in scripts/combat.gd. No Deflect/capture/return-strike path remains in live combat; scripts/bullet.gd now holds static cosmetic preview helpers only.
+The approved change replaces permanent-bullet Deflect combat with auto-aim/auto-fire and double-tap robot skills. Seven weapon profiles and seven skills live in scripts/combat.gd. No Deflect/capture/return-strike path remains in live combat; scripts/bullet.gd now holds static cosmetic preview helpers only.
 
 ## Simulation and bounds
 Friendly shots have finite range/lifetime, swept enemy/wall collision, ordered contacts, finite piercing/chaining and per-shot hit IDs. Target selection chooses the nearest visible enemy in weapon range. Chain targeting respects walls. Cobalt skill missiles turn at a capped rate and splash locally. Enemy shots use swept player/wall collision; their red/orange appearance distinguishes them from friendly rounds. Enemy ranged units and bosses have a short charge ring before firing.
@@ -19,3 +19,11 @@ Missions are kills 15, skills used 3 and kill-chain 10, each paying 15 gold+1 ti
 
 ## Validation
 Current automated suites: shooting, shooter_campaign, shooter_stress, admin_mobile, robots, summon, graphics, lobby, results, upgrade_ui. Historical Deflect-only tests moved to tests/legacy with .gdignore and are not counted as passing. Shooter stress simulates 630s across seven max-upgrade robots plus 90s Blitz; campaign exercises all five active timelines and bosses. See TEST_RESULTS.md for scope/limitations.
+
+## Double-tap skill controls (latest)
+
+Skill button removed. Two short taps in the same blank area activate the skill on second release, <=330ms apart and <=48 logical pixels apart; each contact <=220ms and <12px movement. Long holds, canceled touches, drags (including drag returning to origin), distant/slow pairs, simultaneous fingers and GUI contacts do not qualify. A second finger can double-tap while another continues dragging movement. Emulated mouse events from touch are ignored; desktop real mouse taps and Space remain supported.
+
+Only unhandled blank-area presses become tap candidates; global input observes movement/releases to cancel gestures even when they end over GUI. Pause/menu/upgrade/run transitions clear candidates so stale taps cannot carry over. Existing skill cooldown and state guards are authoritative. A passive status label shows cooldown, consumes no input, and hides outside active gameplay.
+
+New tests/double_tap.gd covers recognition, cooldown, drag/jitter/hold/cancel/time/distance rejection, simultaneous vs sequential taps, continuous movement plus second-finger skill, UI/state boundaries and emulated input. Also rechecked shooting, admin_mobile, upgrade_ui, graphics and lobby. Rendered hidden-button layout at 360×800. Physical Android gesture feel still awaits user confirmation.

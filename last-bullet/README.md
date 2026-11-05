@@ -6,7 +6,7 @@ Godot 4 portrait robot survival shooter. Open `last-bullet/project.godot` from t
 ## Chơi trên điện thoại
 Kéo ở bất kỳ vùng trống nào để di chuyển. Chạm đơn không kích hoạt; cần ẩn xuất hiện sau khi kéo ít nhất 12 pixel logic. Robot tự chọn địch gần trong tầm có đường bắn thông thoáng và tự bắn cả khi di chuyển. Đạn bạn màu sáng; né đạn đỏ/cam và vùng báo động của địch.
 
-Bấm nút kỹ năng bên phải (Space trên PC). WASD/phím mũi tên di chuyển, Esc tạm dừng, F11 fullscreen cửa sổ desktop. Đã bỏ hoàn toàn gameplay Deflect, Perfect và viên đạn tồn tại mãi của v0.7.
+Nhấn đúp nhanh tại cùng một vùng trống để dùng kỹ năng (Space trên PC). Nút skill đã được ẩn; dòng nhỏ phía dưới chỉ báo sẵn sàng/hồi chiêu và không chặn kéo. Một lần chạm, kéo hoặc giữ lâu không kích hoạt skill. WASD/phím mũi tên di chuyển, Esc tạm dừng, F11 fullscreen cửa sổ desktop. Đã bỏ hoàn toàn gameplay Deflect, Perfect và viên đạn tồn tại mãi của v0.7.
 
 ## Robot, vũ khí và kỹ năng
 | Robot | Vũ khí | Kỹ năng |

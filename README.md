@@ -2,7 +2,7 @@
 
 Robot survival shooter for portrait mobile, Godot 4 (validated 4.6.3).
 
-**Auto-aim + auto-fire**, drag anywhere except buttons to move, one robot skill button. Replaces Deflect/permanent-bullet gameplay. Seven robot weapons/skills, eight gun upgrades, five campaign bosses, Survival/cover arenas and 90-second Blitz. Existing robots, skins, summon inventory/pity and campaign progress are retained; new shooter scores stored separately.
+**Auto-aim + auto-fire**, drag anywhere except buttons to move, double-tap robot skills. Replaces Deflect/permanent-bullet gameplay. Seven robot weapons/skills, eight gun upgrades, five campaign bosses, Survival/cover arenas and 90-second Blitz. Existing robots, skins, summon inventory/pity and campaign progress are retained; new shooter scores stored separately.
 
 [Player guide](last-bullet/README.md) · [Shooter mechanics](last-bullet/docs/SHOOTER.md) · [Campaign & Summon](last-bullet/docs/CAMPAIGN_SUMMON.md) · [Tests](last-bullet/docs/TEST_RESULTS.md)
 

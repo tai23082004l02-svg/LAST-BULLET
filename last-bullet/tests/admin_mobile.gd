@@ -85,7 +85,7 @@ func run() -> void:
 	game.layout_viewport(Vector2(720,1600),Vector2(40,32))
 	await process_frame
 	assert(Balance.ARENA.position.y == 205 and Balance.ARENA.end.y == 1308)
-	assert(game.skill_button.position.y+game.skill_button.size.y < 1568)
+	assert(game.skill_status.position.y+game.skill_status.size.y < 1568)
 	assert(game.overlay.position.y >= 40)
 	assert(game.overlay.position.y+game.overlay.size.y <= 1568)
 	assert(game.joystick_origin.y+76 < 1568)
@@ -96,7 +96,7 @@ func run() -> void:
 	assert(game.in_movement_zone(Vector2(500,400)))
 	assert(game.in_movement_zone(Vector2(200,50)))
 	assert(not game.in_movement_zone(game.pause_button.position+game.pause_button.size/2))
-	assert(not game.in_movement_zone(game.skill_button.position+game.skill_button.size/2))
+	assert(game.in_movement_zone(game.skill_status.position+game.skill_status.size/2))
 	assert(not game.in_movement_zone(Vector2(200,10)))
 	game.joystick = Vector2.ONE
 	game.joystick_id = 3

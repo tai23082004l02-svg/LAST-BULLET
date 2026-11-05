@@ -93,7 +93,11 @@ var haptics_on := true
 var save_path := "user://records.cfg"
 var mission_claimed: Array[bool] = [false,false,false]
 var mission_label: Label
-var skill_button: Button
+var skill_status: Label
+var tap_contacts: Dictionary = {}
+var last_skill_tap := -1
+var last_skill_tap_position := Vector2.ZERO
+var last_skill_tap_mouse := false
 var pause_button: Button
 var feedback := 0.0
 var result_paid := false
@@ -224,16 +228,12 @@ func build_ui() -> void:
 	pause_button.pressed.connect(toggle_pause)
 	NeonArt.style_button(pause_button)
 	root.add_child(pause_button)
-	var skill := Button.new()
-	skill_button = skill
-	skill.focus_mode = Control.FOCUS_NONE
-	skill.text = "KỸ NĂNG\nSPACE"
-	skill.position = Vector2(495,1070)
-	skill.size = Vector2(190,145)
-	skill.add_theme_font_size_override("font_size",24)
-	skill.button_down.connect(request_skill)
-	NeonArt.style_button(skill,Color("7fffe1"),true)
-	root.add_child(skill)
+	skill_status = Label.new()
+	skill_status.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	skill_status.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	skill_status.add_theme_font_size_override("font_size",24)
+	skill_status.add_theme_color_override("font_color",Color("8eb8c7"))
+	root.add_child(skill_status)
 	toast = Label.new()
 	toast.position = Vector2(40,955)
 	toast.size = Vector2(640,50)
@@ -286,6 +286,7 @@ func front_page() -> bool:
 	return state not in ["playing","paused","upgrade","results"] and not (state == "admin" and admin_context)
 
 func clear_cards(title: String, subtitle: String) -> void:
+	clear_skill_taps()
 	upgrade_shade.visible = state == "upgrade"
 	clear_card_nodes()
 	home_shell.open_section(title,front_page())
@@ -339,6 +340,7 @@ func animate_button(button: Button, target: float) -> void:
 	button.set_meta("motion",motion)
 
 func show_menu() -> void:
+	clear_skill_taps()
 	upgrade_shade.hide()
 	state = "menu"
 	audio.stop_all()
@@ -350,7 +352,7 @@ func show_menu() -> void:
 	layout_modal()
 
 func show_help() -> void:
-	clear_cards("CÁCH CHƠI", "Kéo ở bất kỳ vùng trống nào để di chuyển; chạm đơn không kích hoạt. Robot tự ngắm địch gần trong tầm và có đường bắn thông thoáng, tự bắn cả khi đang chạy.\n\nNé đạn đỏ/cam của địch và vùng cảnh báo. Đạn sáng của bạn không gây hại cho bạn.\n\nNút KỸ NĂNG (Space trên PC) dùng chiêu riêng của robot. Thu XP để chọn nâng cấp súng. Pause để tạm dừng.\n\nMỗi trận: hạ 15 địch, dùng 3 kỹ năng, đạt chuỗi hạ 10 địch. Mỗi mục tiêu tự trả 15 vàng + 1 vé, một lần. Kết thúc nhận x2 vàng ngay, không quảng cáo.")
+	clear_cards("CÁCH CHƠI", "Kéo ở bất kỳ vùng trống nào để di chuyển; chạm đơn không kích hoạt. Robot tự ngắm địch gần trong tầm và có đường bắn thông thoáng, tự bắn cả khi đang chạy.\n\nNé đạn đỏ/cam của địch và vùng cảnh báo. Đạn sáng của bạn không gây hại cho bạn.\n\nNhấn đúp nhanh tại cùng vùng trống để dùng kỹ năng. Kéo hoặc giữ lâu không kích hoạt. Space trên PC vẫn dùng được. Thu XP để chọn nâng cấp súng. Pause để tạm dừng.\n\nMỗi trận: hạ 15 địch, dùng 3 kỹ năng, đạt chuỗi hạ 10 địch. Mỗi mục tiêu tự trả 15 vàng + 1 vé, một lần. Kết thúc nhận x2 vàng ngay, không quảng cáo.")
 	add_button("VỀ SẢNH",show_menu)
 
 func show_modes() -> void:
@@ -362,6 +364,7 @@ func show_modes() -> void:
 	add_button("BACK",show_menu)
 
 func start_run(run_mode := "survival", layout := "open") -> void:
+	clear_skill_taps()
 	upgrade_shade.hide()
 	home_shell.hide_all()
 	preferred_mode = run_mode
@@ -433,14 +436,56 @@ func start_run(run_mode := "survival", layout := "open") -> void:
 	state = "playing"
 	update_hud()
 	overlay.hide()
-	notice("TỰ ĐỘNG BẮN • KÉO ĐỂ NÉ • SPACE: KỸ NĂNG")
+	notice("KÉO ĐỂ NÉ • NHẤN ĐÚP ĐỂ DÙNG KỸ NĂNG")
+
+func clear_skill_taps() -> void:
+	tap_contacts.clear()
+	last_skill_tap = -1
+
+func begin_skill_tap(id: int, pointer: Vector2) -> void:
+	tap_contacts[id] = {"p":pointer,"at":Time.get_ticks_msec(),"dragged":false,"previous":last_skill_tap}
+
+func finish_skill_tap(id: int, pointer: Vector2, canceled := false) -> void:
+	if not tap_contacts.has(id): return
+	var contact: Dictionary = tap_contacts[id]
+	tap_contacts.erase(id)
+	var now := Time.get_ticks_msec()
+	if canceled or state != "playing" or contact.dragged or pointer.distance_to(contact.p) >= 12 or now-int(contact.at) > 220 or not in_movement_zone(pointer):
+		last_skill_tap = -1
+		return
+	if last_skill_tap >= 0 and contact.previous == last_skill_tap and now-last_skill_tap <= 330 and pointer.distance_to(last_skill_tap_position) <= 48 and last_skill_tap_mouse == (id == -2):
+		last_skill_tap = -1
+		request_skill()
+	else:
+		last_skill_tap = now
+		last_skill_tap_position = pointer
+		last_skill_tap_mouse = id == -2
 
 func _input(event: InputEvent) -> void:
-	# Release even if a finger ends over a GUI button that consumes the event.
-	if event is InputEventScreenTouch and not event.pressed and event.index == joystick_id:
-		reset_stick()
-	if event is InputEventMouseButton and not event.pressed and joystick_id == -2:
-		reset_stick()
+	if event is InputEventMouse and event.device == InputEvent.DEVICE_ID_EMULATION: return
+	var id := -99
+	var pointer := Vector2.ZERO
+	var released := false
+	var canceled := false
+	if event is InputEventScreenTouch:
+		id = event.index
+		pointer = event.position-Vector2(horizontal_padding,0)
+		released = not event.pressed
+		canceled = event.canceled
+	elif event is InputEventScreenDrag:
+		id = event.index
+		pointer = event.position-Vector2(horizontal_padding,0)
+	elif event is InputEventMouse:
+		id = -2
+		pointer = event.position-Vector2(horizontal_padding,0)
+		if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT: released = not event.pressed
+	if tap_contacts.has(id) and not tap_contacts[id].dragged and pointer.distance_to(tap_contacts[id].p) >= 12:
+		tap_contacts[id].dragged = true
+		last_skill_tap = -1
+	# Observe releases even over GUI, but reject GUI endpoints as taps.
+	if released:
+		finish_skill_tap(id,pointer,canceled)
+		if id == joystick_id: reset_stick()
 
 func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_F11 and not OS.has_feature("mobile"):
@@ -461,6 +506,7 @@ func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventScreenTouch or event is InputEventScreenDrag or event is InputEventMouse:
 		pointer = event.position-Vector2(horizontal_padding,0)
 	if event is InputEventScreenTouch:
+		if event.pressed and in_movement_zone(pointer): begin_skill_tap(event.index,pointer)
 		if event.pressed and in_movement_zone(pointer) and joystick_id == -1:
 			joystick_id = event.index
 			joystick_origin = comfortable_stick_origin(pointer)
@@ -473,6 +519,7 @@ func _unhandled_input(event: InputEvent) -> void:
 		update_stick_drag(pointer)
 	# Mouse joystick for desktop preview; keyboard works independently.
 	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
+		if event.pressed and in_movement_zone(pointer): begin_skill_tap(-2,pointer)
 		if event.pressed and in_movement_zone(pointer) and joystick_id == -1:
 			joystick_id = -2
 			joystick_origin = comfortable_stick_origin(pointer)
@@ -488,14 +535,17 @@ func update_stick_drag(pointer: Vector2) -> void:
 	var delta := pointer-joystick_touch_origin
 	if not joystick_dragging and delta.length() < 12:
 		return
+	if not joystick_dragging:
+		last_skill_tap = -1
 	joystick_dragging = true
+	if tap_contacts.has(joystick_id): tap_contacts[joystick_id].dragged = true
 	joystick = (delta/70).limit_length()
 
 func in_movement_zone(pointer: Vector2) -> bool:
 	if not Rect2(0,safe_margins.x,720,canvas_height-safe_margins.x-safe_margins.y).has_point(pointer):
 		return false
 	# Buttons own their touches; all other screen space can start movement.
-	for button in [pause_button,skill_button]:
+	for button in [pause_button]:
 		if button.is_visible_in_tree() and Rect2(button.position,button.size).has_point(pointer):
 			return false
 	return true
@@ -515,6 +565,7 @@ func request_skill() -> void:
 
 
 func toggle_pause() -> void:
+	clear_skill_taps()
 	if state == "playing":
 		state = "paused"
 		audio.stop_all()
@@ -529,7 +580,7 @@ func toggle_pause() -> void:
 		overlay.hide()
 
 func _physics_process(delta: float) -> void:
-	skill_button.visible = state in ["playing","paused"]
+	skill_status.visible = state == "playing"
 	pause_button.visible = state in ["playing","paused"]
 	hud.visible = state in ["playing","paused"]
 	xp_bar.visible = state in ["playing","paused"]
@@ -978,7 +1029,7 @@ func update_hud() -> void:
 	xp_bar.max_value = xp_required()
 	xp_bar.value = xp
 	mission_label.text = "HẠ ĐỊCH %d/15 • KỸ NĂNG %d/3 • CHUỖI %d/10" % [mini(kills,15),mini(combat.skill_uses,3),mini(best_combo,10)]
-	skill_button.text = ["KHIÊN","XUNG ĐIỆN","ĐÓNG BĂNG","BÙNG CHÁY","BÃO LASER","TÊN LỬA","LƯỚT"][selected_robot]+"\n" + ("SẴN SÀNG" if cooldown <= 0 else "%.1fs" % cooldown)
+	skill_status.text = "NHẤN ĐÚP • "+["KHIÊN","XUNG ĐIỆN","ĐÓNG BĂNG","BÙNG CHÁY","BÃO LASER","TÊN LỬA","LƯỚT"][selected_robot]+" • " + ("SẴN SÀNG" if cooldown <= 0 else "%.1fs" % cooldown)
 
 func _process(delta: float) -> void:
 	visual_clock += delta
@@ -1331,8 +1382,8 @@ func layout_viewport(size: Vector2, safe := Vector2.ZERO) -> void:
 	pause_button.position.y = 40+safe.x
 	boss_label.position.y = 169+safe.x
 	boss_bar.position.y = 198+safe.x
-	skill_button.position = Vector2(475,canvas_height-215-safe.y)
-	skill_button.size = Vector2(210,155)
+	skill_status.position = Vector2(40,canvas_height-190-safe.y)
+	skill_status.size = Vector2(640,64)
 	joystick_origin = Vector2(185,canvas_height-145-safe.y)
 	joystick_id = -1
 	joystick = Vector2.ZERO

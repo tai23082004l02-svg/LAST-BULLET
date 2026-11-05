@@ -15,7 +15,7 @@ func run() -> void:
 	await process_frame
 	assert(game.offered_upgrades.size() == 3 and game.state == "upgrade")
 	assert(game.upgrade_shade.visible and game.upgrade_shade.mouse_filter == Control.MOUSE_FILTER_STOP)
-	assert(not game.hud.visible and not game.mission_label.visible and not game.skill_button.visible)
+	assert(not game.hud.visible and not game.mission_label.visible and not game.skill_status.visible)
 	var elapsed: float = game.elapsed
 	var shot_count: int = game.combat.shots.size()
 	game._physics_process(1)
