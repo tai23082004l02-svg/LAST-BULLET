@@ -75,6 +75,7 @@ var previous_record := 0
 var new_record := false
 var low_effects := false
 var final_summary := ""
+var upgrade_shade: ColorRect
 var selected_robot := 0
 var owned_robots: Array[int] = [0]
 var robot_gallery_index := 0
@@ -245,6 +246,11 @@ func build_ui() -> void:
 	toast.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	toast.add_theme_font_size_override("font_size",23)
 	root.add_child(toast)
+	upgrade_shade = ColorRect.new()
+	upgrade_shade.color = Color(0.01,0.025,0.055,0.84)
+	upgrade_shade.mouse_filter = Control.MOUSE_FILTER_STOP
+	upgrade_shade.hide()
+	root.add_child(upgrade_shade)
 	overlay = PanelContainer.new()
 	overlay.position = Vector2(65,190)
 	overlay.size = Vector2(590,820)
@@ -286,6 +292,7 @@ func front_page() -> bool:
 	return state not in ["playing","paused","upgrade","results"] and not (state == "admin" and admin_context)
 
 func clear_cards(title: String, subtitle: String) -> void:
+	upgrade_shade.visible = state == "upgrade"
 	clear_card_nodes()
 	home_shell.open_section(title,front_page())
 	layout_modal()
@@ -338,6 +345,7 @@ func animate_button(button: Button, target: float) -> void:
 	button.set_meta("motion",motion)
 
 func show_menu() -> void:
+	upgrade_shade.hide()
 	state = "menu"
 	audio.stop_all()
 	for enemy in enemies: enemy.hide()
@@ -348,7 +356,7 @@ func show_menu() -> void:
 	layout_modal()
 
 func show_help() -> void:
-	clear_cards("ONE SHOT. YOUR CALL.", "1. Move with WASD / arrows, or drag the left joystick. Avoid coral enemies.\n\n2. Aim with movement; the arrow previews your next deflect. Press SPACE inside the outer ring. Catch an incoming bullet inside the gold ring for PERFECT!\n\n3. Collect XP, choose upgrades, complete missions for skin coins. Shields block front hits; dodge yellow marked zones. Your bullet is harmless.\n\nPLAY offers Open, Reflector and 90-second Blitz. Chain Perfect catches for bonus points. After boss release, deflect back while its core is gold for x4 damage. Claim x2 gold instantly on results.")
+	clear_cards("ONE SHOT. YOUR CALL.", "1. Move with WASD / arrows, or drag anywhere except UI buttons. Avoid coral enemies.\n\n2. Aim with movement; the arrow previews your next deflect. Press SPACE inside the outer ring. Catch an incoming bullet inside the gold ring for PERFECT!\n\n3. Collect XP, choose upgrades, complete missions for skin coins. Shields block front hits; dodge yellow marked zones. Your bullet is harmless.\n\nPLAY offers Open, Reflector and 90-second Blitz. Chain Perfect catches for bonus points. After boss release, deflect back while its core is gold for x4 damage. Claim x2 gold instantly on results.")
 	add_button("BACK", show_menu)
 
 func show_modes() -> void:
@@ -360,6 +368,7 @@ func show_modes() -> void:
 	add_button("BACK",show_menu)
 
 func start_run(run_mode := "survival", layout := "open") -> void:
+	upgrade_shade.hide()
 	home_shell.hide_all()
 	preferred_mode = run_mode
 	preferred_layout = layout if layout in ["open","reflector"] else "open"
@@ -550,12 +559,12 @@ func toggle_pause() -> void:
 		overlay.hide()
 
 func _physics_process(delta: float) -> void:
-	deflect_button.visible = state in ["playing","paused","upgrade"]
+	deflect_button.visible = state in ["playing","paused"]
 	pause_button.visible = state in ["playing","paused"]
-	hud.visible = state in ["playing","paused","upgrade"]
-	xp_bar.visible = state in ["playing","paused","upgrade"]
-	mission_label.visible = state in ["playing","paused","upgrade"]
-	var playing_ui := state in ["playing","paused","upgrade"]
+	hud.visible = state in ["playing","paused"]
+	xp_bar.visible = state in ["playing","paused"]
+	mission_label.visible = state in ["playing","paused"]
+	var playing_ui := state in ["playing","paused"]
 	player_actor.visible = playing_ui and (invulnerable <= 0 or int(invulnerable*15)%2 == 0)
 	header_panel.visible = playing_ui
 	brand.text = "LAST BULLET • ADMIN" if admin_enabled else "LAST BULLET"
@@ -572,7 +581,7 @@ func _physics_process(delta: float) -> void:
 		boss_bar.max_value = boss.max_hp
 		boss_bar.value = boss.hp
 	toast_time = maxf(0,toast_time-delta)
-	toast.visible = toast_time > 0
+	toast.visible = toast_time > 0 and state != "upgrade"
 	if state != "playing":
 		queue_redraw()
 		return
@@ -786,47 +795,80 @@ func damage_enemy(enemy: ArenaEnemy, damage: float, impact := false, incoming :=
 		campaign_won = true
 		finish_run()
 
+func upgrade_color(index: int) -> Color:
+	return Color("ffb779") if index in [0,4,5,6] else Color("83cfff") if index in [3,7] else Color("83f5db")
+
+func upgrade_delta(index: int) -> String:
+	var current := upgrades[index]
+	var next := mini(current+1,Balance.UPGRADE_CAPS[index])
+	match index:
+		0: return "Sát thương cơ bản: %d → %d" % [1+current,1+next]
+		1: return "Tốc độ đạn: %d → %d" % [mini(950,int(560*(1+current*0.12))),mini(950,int(560*(1+next*0.12)))]
+		2: return "Lái tự động khi đứng yên: %.2f → %.2f rad/s" % [0.45+current*0.25,0.45+next*0.25]
+		3: return "Làm chậm sau đỡ đạn: %.1f → %.1f giây" % [0.0 if current == 0 else 0.6+current*0.3,0.6+next*0.3]
+		4: return "Sát thương mỗi nhịp lửa: %.1f → %.1f" % [0.2*current,0.2*next]
+		5: return "Xuyên thêm sau đỡ đạn: %d → %d địch" % [current,next]
+		6: return "Sát thương tích từ nảy tường: tối đa +%d → +%d" % [current,next]
+		7:
+			var wait := "Hồi chiêu: %.2f → %.2f giây" % [0.65+current*0.12,0.65+next*0.12]
+			if admin_enabled and admin_free_deflect: wait = "Admin đang bỏ hồi chiêu"
+			return "Bán kính bắt: %d → %d\n%s" % [105+current*18,105+next*18,wait]
+	return ""
+
 func show_upgrades() -> void:
 	var available: Array[int] = []
 	for i in range(upgrades.size()):
-		if upgrades[i] < Balance.UPGRADE_CAPS[i]:
-			available.append(i)
+		if upgrades[i] < Balance.UPGRADE_CAPS[i]: available.append(i)
 	if available.is_empty():
 		hp = mini(5,hp+1)
 		return
 	state = "upgrade"
-	joystick = Vector2.ZERO
-	joystick_id = -1
+	reset_stick()
 	leveled_up.emit()
 	audio.play_event("level_up")
-	clear_cards("LEVEL %d" % level,"Choose one. The arena waits.")
+	clear_cards("LÊN CẤP %d" % level,"Chọn 1 nâng cấp")
+	cards.add_theme_constant_override("separation",16)
+	(cards.get_child(1) as Label).horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	(cards.get_child(1) as Label).add_theme_color_override("font_color",Color("8eb8c7"))
 	available.shuffle()
 	offered_upgrades.clear()
-	for i in range(mini(3,available.size())):
-		offered_upgrades.append(available[i])
-	for i in range(mini(3,available.size())):
-		var index := available[i]
-		var card := add_button("%s [%d/%d]\n%s" % [Balance.UPGRADE_NAMES[index],upgrades[index],Balance.UPGRADE_CAPS[index],Balance.UPGRADE_INFO[index]],choose_upgrade.bind(index))
-		card.add_theme_font_size_override("font_size",26)
-		card.alignment = HORIZONTAL_ALIGNMENT_LEFT
-		for style_name in ["normal","hover","pressed","disabled"]:
-			var style := card.get_theme_stylebox(style_name).duplicate() as StyleBoxFlat
-			style.content_margin_left = 70
-			style.content_margin_right = 12
-			card.add_theme_stylebox_override(style_name,style)
+	for i in range(mini(3,available.size())): offered_upgrades.append(available[i])
+	var names := ["Đạn hạng nặng","Gia tốc","Trợ lực từ","Bẻ cong thời gian","Vệt lửa","Đạn xuyên","Nảy tích lực","Vòng bắt rộng"]
+	var hints := ["Tăng lực đánh mỗi lần đạn trúng.","Đạn bay nhanh hơn.","Đứng yên để đạn tự hướng về địch.","Đỡ đạn để làm chậm kẻ địch.","Đạn để lại vùng đất cháy.","Đỡ đạn để xuyên thêm kẻ địch.","Nảy tường để tích thêm sát thương.","Dễ bắt đạn hơn, đổi lại hồi lâu hơn."]
+	for index in offered_upgrades:
+		var accent := upgrade_color(index)
+		var card := add_button("",choose_upgrade.bind(index))
+		card.name = "Upgrade%d" % index
+		card.custom_minimum_size = Vector2(560,178)
+		NeonArt.style_button(card,accent)
 		var icon := Control.new()
 		icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		icon.position = Vector2(30,39)
+		icon.position = Vector2(40,42)
 		icon.draw.connect(func(): NeonArt.icon(index,Vector2.ZERO,icon))
 		card.add_child(icon)
-		card.add_theme_constant_override("outline_size",2)
+		var content := VBoxContainer.new()
+		content.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		content.position = Vector2(78,15)
+		content.size = Vector2(466,150)
+		content.add_theme_constant_override("separation",4)
+		card.add_child(content)
+		var name_label := result_label(content,names[index]+"  %d → %d/%d" % [upgrades[index],upgrades[index]+1,Balance.UPGRADE_CAPS[index]],26,accent)
+		name_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
+		var hint := result_label(content,hints[index],21,Color("a2bfcc"))
+		hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
+		var delta := result_label(content,upgrade_delta(index),22)
+		delta.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
+		for label in [name_label,hint,delta]: label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_physics_process(0)
 
 func choose_upgrade(index: int) -> void:
 	if state != "upgrade" or not offered_upgrades.has(index):
 		return
 	upgrades[index] = mini(upgrades[index]+1,Balance.UPGRADE_CAPS[index])
 	offered_upgrades.clear()
+	reset_stick()
 	state = "playing"
+	upgrade_shade.hide()
 	overlay.hide()
 
 func finish_run() -> void:
@@ -1609,6 +1651,11 @@ func layout_modal() -> void:
 	var top := 144+safe_margins.x if home_shell.visible else 100+safe_margins.x
 	var bottom := canvas_height-144-safe_margins.y if home_shell.visible else canvas_height-100-safe_margins.y
 	var height := maxf(400,bottom-top)
+	if state == "upgrade":
+		height = minf(height,800)
+		top = safe_margins.x+(canvas_height-safe_margins.x-safe_margins.y-height)*0.5
+	upgrade_shade.position = Vector2(-horizontal_padding,0)
+	upgrade_shade.size = Vector2(720+horizontal_padding*2,canvas_height)
 	var scroll := cards.get_parent() as ScrollContainer
 	scroll.custom_minimum_size = Vector2(590,height-64)
 	overlay.position = Vector2(35,top)

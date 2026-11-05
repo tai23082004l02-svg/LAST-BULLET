@@ -60,3 +60,7 @@ The user clarified that movement must start anywhere on the screen, not just the
 ## Latest results-screen redesign
 
 Implemented the approved compact mobile results screen; read RESULTS_UI.md. Three stat tiles, robot/stars, reward row, once-only immediate x2, retry/next-stage primary CTA, stage/home secondary actions, collapsible advanced stats. Tested results/campaign/features/lobby and rendered 360×640/800; await physical-device feedback. Touch controls remain drag-anywhere except buttons, with a 12-logical-pixel activation threshold; a tap alone does not activate the ring or movement.
+
+## Latest upgrade-screen redesign
+
+Implemented the approved compact mobile upgrade selector; read UPGRADE_UI.md. Vietnamese cards, before/after stats, functional colors, centered safe-area panel and dark input-blocking backdrop. HUD/missions/controls hide and combat pauses. One card selection resumes, resets movement and remains guarded against repeat claims. Tests upgrade_ui/features/campaign/results/admin_mobile pass; rendered 360×640/800. Touch remains drag-anywhere except buttons, activated after 12 logical pixels; do not revert to left-only or tap-to-move.
