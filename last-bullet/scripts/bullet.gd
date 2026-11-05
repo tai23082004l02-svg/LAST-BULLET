@@ -1,0 +1,109 @@
+class_name PermanentBullet
+extends Node2D
+
+var velocity := Vector2(0.7, -0.7).normalized() * Balance.BULLET_SPEED
+var hit_cooldowns: Dictionary = {}
+var idle := 0.0
+var boost := 0.0
+var capture := 0.0
+var travel := 0.0
+var last_check := Vector2.ZERO
+var check_time := 0.0
+var trail: Array[Vector2] = []
+
+# Continuous swept circle tests against enemies and exact arena planes.
+# Only the owner creates this entity; captures and recovery reuse it.
+func advance(delta: float, game: Node2D) -> void:
+	boost = maxf(0, boost - delta)
+	idle += delta
+	for key in hit_cooldowns.keys():
+		hit_cooldowns[key] -= delta
+		if hit_cooldowns[key] <= 0:
+			hit_cooldowns.erase(key)
+	if capture > 0:
+		capture -= delta
+		if is_instance_valid(game.boss):
+			position = game.boss.position
+		if capture <= 0:
+			velocity = (game.player - position).normalized() * game.bullet_speed()
+			position += velocity.normalized() * 65
+		return
+	var speed: float = game.bullet_speed() * (1.2 if boost > 0 else 1.0)
+	if idle > 5 and not game.enemies.is_empty():
+		var target: Node2D = game.nearest_enemy(position)
+		if target != null:
+			var angle := velocity.angle_to(target.position - position)
+			velocity = velocity.rotated(clampf(angle, -delta * (0.45 + game.upgrades[2] * 0.25), delta * (0.45 + game.upgrades[2] * 0.25)))
+	velocity = velocity.normalized() * speed
+	var remaining := delta
+	for bounce_index in range(10):
+		if remaining <= 0.00001:
+			break
+		var motion := velocity * remaining
+		var fraction := 1.0
+		var normal := Vector2.ZERO
+		var target: Node2D = null
+		var bounds := Balance.ARENA.grow(-7)
+		for axis in range(2):
+			if absf(motion[axis]) < 0.0001:
+				continue
+			var edge: float = bounds.end[axis] if motion[axis] > 0 else bounds.position[axis]
+			var t: float = (edge - position[axis]) / motion[axis]
+			if t >= 0 and t <= fraction:
+				fraction = t
+				normal = Vector2.ZERO
+				normal[axis] = -signf(motion[axis])
+		for enemy in game.enemies:
+			if not is_instance_valid(enemy) or hit_cooldowns.has(enemy.get_instance_id()):
+				continue
+			var offset: Vector2 = position - enemy.position
+			var radius: float = enemy.radius + 7
+			var a := motion.length_squared()
+			var b := 2 * offset.dot(motion)
+			var c := offset.length_squared() - radius * radius
+			var discriminant := b * b - 4 * a * c
+			if a <= 0 or discriminant < 0:
+				continue
+			var t := maxf(0, (-b - sqrt(discriminant)) / (2 * a))
+			if t <= fraction:
+				fraction = t
+				target = enemy
+				normal = (position + motion * t - enemy.position).normalized()
+				if normal == Vector2.ZERO:
+					normal = -velocity.normalized()
+		position += motion * fraction
+		if normal == Vector2.ZERO:
+			break
+		remaining *= 1 - fraction
+		if target != null:
+			hit_cooldowns[target.get_instance_id()] = Balance.HIT_COOLDOWN
+			idle = 0
+			if target.kind == 3 and target.capture_ready <= 0:
+				capture = 1.1
+				target.capture_ready = 9
+				game.notice("BULLET EATER • RELEASE INCOMING")
+				return
+			game.damage_enemy(target, 1 + game.upgrades[0] + (1 if boost > 0 else 0))
+		velocity = velocity.bounce(normal)
+		position += normal * 1.5
+	position = position.clamp(Balance.ARENA.position + Vector2(8,8), Balance.ARENA.end - Vector2(8,8))
+	check_time += delta
+	travel += velocity.length() * delta
+	if check_time > 0.6:
+		if position.distance_to(last_check) < 3 and travel > 100:
+			position = Balance.ARENA.get_center()
+			velocity = Vector2(0.63, -0.77) * speed
+		last_check = position
+		check_time = 0
+		travel = 0
+	trail.push_front(position)
+	if trail.size() > 14:
+		trail.pop_back()
+	queue_redraw()
+
+func _draw() -> void:
+	for i in range(1, trail.size()):
+		draw_line(trail[i-1] - position, trail[i] - position, Color(0.1,0.9,1, 0.5 * (1.0-float(i)/14)), 4)
+	draw_circle(Vector2.ZERO, 13, Color(0.1,0.9,1,0.15))
+	draw_circle(Vector2.ZERO, 7, Color(0.4,1,1))
+	draw_circle(Vector2(-2,-2), 2, Color.WHITE)
