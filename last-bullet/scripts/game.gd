@@ -475,7 +475,7 @@ func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventScreenTouch or event is InputEventScreenDrag or event is InputEventMouse:
 		pointer = event.position-Vector2(horizontal_padding,0)
 	if event is InputEventScreenTouch:
-		if event.pressed and pointer.x < 340 and pointer.y > Balance.ARENA.end.y+10 and joystick_id == -1:
+		if event.pressed and in_movement_zone(pointer) and joystick_id == -1:
 			joystick_id = event.index
 			joystick_origin = comfortable_stick_origin(pointer)
 			joystick_touch_origin = pointer
@@ -486,7 +486,7 @@ func _unhandled_input(event: InputEvent) -> void:
 		joystick = ((pointer - joystick_touch_origin) / 70).limit_length()
 	# Mouse joystick for desktop preview; keyboard works independently.
 	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
-		if event.pressed and pointer.x < 340 and pointer.y > Balance.ARENA.end.y+10:
+		if event.pressed and in_movement_zone(pointer) and joystick_id == -1:
 			joystick_id = -2
 			joystick_origin = comfortable_stick_origin(pointer)
 			joystick_touch_origin = pointer
@@ -496,9 +496,12 @@ func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventMouseMotion and joystick_id == -2:
 		joystick = ((pointer - joystick_touch_origin)/70).limit_length()
 
+func in_movement_zone(pointer: Vector2) -> bool:
+	return pointer.x >= 0 and pointer.x < 360 and pointer.y >= Balance.ARENA.position.y and pointer.y < canvas_height-safe_margins.y
+
 func comfortable_stick_origin(pointer: Vector2) -> Vector2:
-	# Floating stick stays in the thumb zone even when a touch starts at an edge.
-	return pointer.clamp(Vector2(150,Balance.ARENA.end.y+112),Vector2(260,canvas_height-safe_margins.y-125))
+	# The ring follows the finger inside the safe play area, without clipping edges.
+	return pointer.clamp(Vector2(80,Balance.ARENA.position.y+80),Vector2(280,canvas_height-safe_margins.y-90))
 
 func reset_stick() -> void:
 	joystick_id = -1
@@ -947,17 +950,19 @@ func _draw() -> void:
 		draw_colored_polygon(PackedVector2Array([pointer+direction*13,pointer-direction.rotated(0.65)*10,pointer-direction.rotated(-0.65)*10]),Color("d7fdff"))
 	if is_instance_valid(bullet) and bullet.capture > 0:
 		draw_line(bullet.position,player,Color(1,0.8,0.3,0.4),3)
-	# Thumb controls: layered rings and a damped visual thumb cap.
-	draw_circle(joystick_origin,76,Color(0.04,0.13,0.19,0.85))
-	draw_arc(joystick_origin,76,0,TAU,64,Color(0.4,0.85,0.9,0.7),2)
-	draw_arc(joystick_origin,69,0,TAU,64,Color(0.3,0.65,0.75,0.25),2)
-	for i in range(4):
-		var direction := Vector2.from_angle(i*PI/2)
-		draw_line(joystick_origin+direction*59-direction.orthogonal()*4,joystick_origin+direction*63,Color(0.4,0.8,0.85,0.5),2)
-		draw_line(joystick_origin+direction*63,joystick_origin+direction*59+direction.orthogonal()*4,Color(0.4,0.8,0.85,0.5),2)
-	var thumb := joystick_origin+joystick*48
-	draw_circle(thumb,29,Color("173e4b"))
-	draw_arc(thumb,29,0,TAU,40,Color("60b9c3"),2)
+	# Floating joystick appears only while dragging.
+	if joystick_id != -1 and state == "playing":
+		# Thumb controls: layered rings and a damped visual thumb cap.
+		draw_circle(joystick_origin,76,Color(0.04,0.13,0.19,0.85))
+		draw_arc(joystick_origin,76,0,TAU,64,Color(0.4,0.85,0.9,0.7),2)
+		draw_arc(joystick_origin,69,0,TAU,64,Color(0.3,0.65,0.75,0.25),2)
+		for i in range(4):
+			var direction := Vector2.from_angle(i*PI/2)
+			draw_line(joystick_origin+direction*59-direction.orthogonal()*4,joystick_origin+direction*63,Color(0.4,0.8,0.85,0.5),2)
+			draw_line(joystick_origin+direction*63,joystick_origin+direction*59+direction.orthogonal()*4,Color(0.4,0.8,0.85,0.5),2)
+		var thumb := joystick_origin+joystick*48
+		draw_circle(thumb,29,Color("173e4b"))
+		draw_arc(thumb,29,0,TAU,40,Color("60b9c3"),2)
 
 func deflect_radius() -> float:
 	return Balance.DEFLECT_RADIUS + upgrades[7]*18

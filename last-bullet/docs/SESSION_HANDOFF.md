@@ -48,3 +48,7 @@ Luôn kiểm tra HEAD mới nhất trước push, bảo toàn dữ liệu và th
 ## Trạng thái cuối phiên
 
 Người dùng đã clone repository, import/chạy được Godot Android và xác nhận chế độ dọc đã hoạt động. Yêu cầu mới nhất là lưu quy trình lên GitHub cho phiên chat tiếp theo. Không có lỗi đang chờ xử lý hoặc yêu cầu gameplay mới trong bước bàn giao này.
+
+## Latest touch-control update
+
+The user requested an Archer Hunter-style hidden floating joystick after finding the bottom-left control uncomfortable on S23 Ultra. Movement now starts with a drag anywhere in the left half below the HUD. The ring is hidden while idle and shown only during touch; release stops movement. See TOUCH_CONTROLS.md. This supersedes the previous bottom-only stick placement. Automated touch/drag/second-finger/release checks pass; await user comfort feedback on device.

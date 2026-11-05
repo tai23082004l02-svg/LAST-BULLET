@@ -1,7 +1,9 @@
-# Mobile movement controls
+# Mobile floating joystick
 
-2026-11-05: After testing on S23 Ultra, the user reported that the movement stick was too close to the bottom-left corner. The floating stick previously adopted the exact touch position, including edge touches.
+Updated 2026-11-05 after user feedback on S23 Ultra: replace the always-visible bottom-left stick with a hidden floating joystick, similar to the requested Archer Hunter interaction.
 
-The default center is now x=185 logical pixels. Touch-created centers are constrained to x=150–260 and a safe vertical band below the arena, with at least 125 pixels above the bottom safe inset. Movement measures drag from the original touch, independent of the constrained visual center, so edge touches do not jump. Release restores the comfortable default and clears movement, including releases consumed by GUI. Deflect remains in its existing right-side safe zone; arena geometry is preserved.
+When idle, the movement ring is hidden. Touch and drag anywhere in the left half below the HUD to move; a ring appears near the touch and disappears on release. The visual center is constrained to safe edges. Drag is measured from the actual initial touch, so clamping does not introduce movement jumps. The right half remains available for Deflect and UI. A second finger cannot take over the active movement gesture. Release is handled even when a GUI consumes it. Keyboard movement remains available.
 
-Validated with Godot 4.6.3 tests/admin_mobile.gd, including constrained edge positions, arena separation, safe inset bounds and reset. Physical-device comfort needs user confirmation after pull.
+Supersedes the earlier bottom-only comfortable thumb-zone change. Arena dimensions and gameplay remain unchanged.
+
+Godot 4.6.3 tests/admin_mobile.gd passes: safe layout, movement-zone bounds, touch/drag direction, second-finger ownership, release/reset and existing admin/profile checks. Comfort and simultaneous Deflect on physical Android still require user testing after pull.
