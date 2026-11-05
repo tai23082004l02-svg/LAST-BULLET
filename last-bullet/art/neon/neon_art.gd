@@ -87,6 +87,35 @@ static func icon(index: int, point: Vector2, canvas: CanvasItem) -> void:
 		6:
 			canvas.draw_polyline(PackedVector2Array([point+Vector2(-15,10),point+Vector2(0,-12),point+Vector2(15,10)]),color,3)
 			canvas.draw_line(point+Vector2(-20,-16),point+Vector2(20,-16),Color("ffd389"),3)
+		8:
+			for angle in [-0.6,0.0,0.6]:
+				var ray := Vector2.UP.rotated(angle)
+				canvas.draw_line(point+ray*2,point+ray*18,color,3)
+		9:
+			canvas.draw_line(point-Vector2(0,16),point+Vector2(0,16),color,3)
+			canvas.draw_polyline(PackedVector2Array([point+Vector2(-7,9),point+Vector2(0,17),point+Vector2(7,9)]),color,3)
+		10:
+			canvas.draw_line(point+Vector2(18,-18),point+Vector2(18,18),Color("ffca83"),3)
+			canvas.draw_polyline(PackedVector2Array([point+Vector2(-17,14),point+Vector2(14,0),point+Vector2(-17,-14)]),color,3)
+		11:
+			canvas.draw_circle(point+Vector2(0,5),11,Color("b7ed68"))
+			canvas.draw_rect(Rect2(point+Vector2(-5,-15),Vector2(10,13)),color,false,3)
+		12:
+			for i in range(6):
+				var ray := Vector2.from_angle(i*TAU/6)
+				canvas.draw_line(point,point+ray*17,Color("a8eaff"),3)
+		13:
+			var polygon := PackedVector2Array()
+			for i in range(16): polygon.append(point+Vector2.from_angle(i*TAU/16)*(18 if i%2 == 0 else 8))
+			canvas.draw_colored_polygon(polygon,Color("ffbb77"))
+		14:
+			canvas.draw_rect(Rect2(point-Vector2(12,8),Vector2(24,16)),color,false,3)
+			canvas.draw_circle(point,4,Color.WHITE)
+			canvas.draw_line(point-Vector2(20,0),point-Vector2(12,0),color,4)
+			canvas.draw_line(point+Vector2(12,0),point+Vector2(20,0),color,4)
+		15:
+			canvas.draw_arc(point,16,0,TAU,28,color,2)
+			for i in range(3): diamond(canvas,point+Vector2.from_angle(i*TAU/3)*16,6,Color("c6fff2"))
 		_:
 			canvas.draw_arc(point,16,0,TAU,32,color,3)
 			canvas.draw_circle(point,4,Color.WHITE)

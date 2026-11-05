@@ -25,7 +25,7 @@ func run() -> void:
 	touch.position = Vector2(300,600)
 	game._unhandled_input(touch)
 	assert(game.joystick_id == -1)
-	for index in range(8):
+	for index in range(Balance.UPGRADE_CAPS.size()):
 		assert(game.upgrade_delta(index).contains("→"))
 	assert(game.upgrade_delta(7).contains("10.0 → 9.0"))
 	for height in [1280,1600,1800]:
@@ -43,7 +43,7 @@ func run() -> void:
 	game.choose_upgrade(choice)
 	assert(game.upgrades[choice] == before+1)
 	# Only the remaining non-maxed choice may be offered; exhausting all choices heals.
-	for i in range(8): game.upgrades[i] = Balance.UPGRADE_CAPS[i]
+	for i in range(Balance.UPGRADE_CAPS.size()): game.upgrades[i] = Balance.UPGRADE_CAPS[i]
 	game.upgrades[7] = 2
 	game.show_upgrades()
 	assert(game.offered_upgrades == [7])

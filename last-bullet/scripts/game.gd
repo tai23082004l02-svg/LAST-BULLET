@@ -72,6 +72,9 @@ var low_effects := false
 var final_summary := ""
 var upgrade_shade: ColorRect
 var selected_robot := 0
+var selected_weapon := -1
+var shoot_while_moving := false
+var armory_preview := -1
 var owned_robots: Array[int] = [0]
 var robot_gallery_index := 0
 var weapon_label: Label
@@ -84,7 +87,7 @@ var admin_free_skill := false
 
 const AudioDirector = preload("res://scripts/audio.gd")
 var audio: Node
-var upgrades: Array[int] = [0,0,0,0,0,0,0,0]
+var upgrades: Array[int] = Balance.empty_upgrades()
 var coins := 0
 var owned_skins: Array[int] = [0]
 var selected_skin := 0
@@ -352,7 +355,7 @@ func show_menu() -> void:
 	layout_modal()
 
 func show_help() -> void:
-	clear_cards("CÁCH CHƠI", "Kéo ở bất kỳ vùng trống nào để di chuyển; chạm đơn không kích hoạt. Robot tự ngắm địch gần trong tầm và có đường bắn thông thoáng, tự bắn cả khi đang chạy.\n\nNé đạn đỏ/cam của địch và vùng cảnh báo. Đạn sáng của bạn không gây hại cho bạn.\n\nNhấn đúp nhanh tại cùng vùng trống để dùng kỹ năng. Kéo hoặc giữ lâu không kích hoạt. Space trên PC vẫn dùng được. Thu XP để chọn nâng cấp súng. Pause để tạm dừng.\n\nMỗi trận: hạ 15 địch, dùng 3 kỹ năng, đạt chuỗi hạ 10 địch. Mỗi mục tiêu tự trả 15 vàng + 1 vé, một lần. Kết thúc nhận x2 vàng ngay, không quảng cáo.")
+	clear_cards("CÁCH CHƠI", "Kéo ở bất kỳ vùng trống nào để di chuyển; chạm đơn không kích hoạt. Robot tự ngắm địch gần trong tầm có đường bắn thông thoáng. Thả tay để bắn, kéo để né; có thể bật bắn khi di chuyển trong Cài đặt. Kho vũ khí ở tab VŨ KHÍ, tất cả mở sẵn để thử.\n\nNé đạn đỏ/cam của địch và vùng cảnh báo. Đạn sáng của bạn không gây hại cho bạn.\n\nNhấn đúp nhanh tại cùng vùng trống để dùng kỹ năng. Kéo hoặc giữ lâu không kích hoạt. Space trên PC vẫn dùng được. Thu XP để chọn nâng cấp súng. Pause để tạm dừng.\n\nMỗi trận: hạ 15 địch, dùng 3 kỹ năng, đạt chuỗi hạ 10 địch. Mỗi mục tiêu tự trả 15 vàng + 1 vé, một lần. Kết thúc nhận x2 vàng ngay, không quảng cáo.")
 	add_button("VỀ SẢNH",show_menu)
 
 func show_modes() -> void:
@@ -398,7 +401,7 @@ func start_run(run_mode := "survival", layout := "open") -> void:
 	enemies.clear()
 	boss = null
 	pickups.clear()
-	upgrades = [0,0,0,0,0,0,0,0]
+	upgrades = Balance.empty_upgrades()
 	if admin_enabled and admin_max_start:
 		for i in range(upgrades.size()): upgrades[i] = Balance.UPGRADE_CAPS[i]
 	mission_claimed = [false,false,false]
@@ -436,7 +439,7 @@ func start_run(run_mode := "survival", layout := "open") -> void:
 	state = "playing"
 	update_hud()
 	overlay.hide()
-	notice("KÉO ĐỂ NÉ • NHẤN ĐÚP ĐỂ DÙNG KỸ NĂNG")
+	notice("KÉO ĐỂ NÉ • THẢ TAY BẮN • NHẤN ĐÚP SKILL")
 
 func clear_skill_taps() -> void:
 	tap_contacts.clear()
@@ -786,22 +789,30 @@ func damage_enemy(enemy: ArenaEnemy, damage: float, impact := false, incoming :=
 		finish_run()
 
 func upgrade_color(index: int) -> Color:
-	return Color("ffb779") if index in [0,3,4,5,6] else Color("83cfff") if index == 7 else Color("83f5db")
+	return Color("ffb779") if index in [0,3,4,5,6,8,9,10,13] else Color("83cfff") if index in [7,12] else Color("b7ed68") if index == 11 else Color("83f5db")
 
 func upgrade_delta(index: int) -> String:
 	var current := upgrades[index]
 	var next := mini(current+1,Balance.UPGRADE_CAPS[index])
 	match index:
-		0: return "Sát thương: %.2f → %.2f" % [Shooter.DAMAGES[selected_robot]*(1+current*0.22),Shooter.DAMAGES[selected_robot]*(1+next*0.22)]
-		1: return "Nhịp bắn: %.2f → %.2f giây" % [Shooter.INTERVALS[selected_robot]/(1+current*0.16),Shooter.INTERVALS[selected_robot]/(1+next*0.16)]
-		2: return "Đạn mỗi loạt: %d → %d" % [(5 if selected_robot == 5 else 1)+current,(5 if selected_robot == 5 else 1)+next]
+		0: return "Sát thương: %.2f → %.2f" % [Shooter.DAMAGES[combat.weapon_id()]*(1+current*0.22),Shooter.DAMAGES[combat.weapon_id()]*(1+next*0.22)]
+		1: return "Nhịp bắn: %.2f → %.2f giây" % [Shooter.INTERVALS[combat.weapon_id()]/(1+current*0.16),Shooter.INTERVALS[combat.weapon_id()]/(1+next*0.16)]
+		2: return "Đạn mỗi loạt: %d → %d" % [(5 if combat.weapon_id() == 5 else 1)+current,(5 if combat.weapon_id() == 5 else 1)+next]
 		3: return "Chí mạng: %d%% → %d%% • sát thương ×1.8" % [current*8,next*8]
-		4: return "Sát thương cháy/giây: %.1f → %.1f" % [maxf(0.6 if selected_robot == 3 else 0,current*0.5),maxf(0.6 if selected_robot == 3 else 0,next*0.5)]
-		5: return "Xuyên thêm: %d → %d địch" % [current+(3 if selected_robot == 4 else 0),next+(3 if selected_robot == 4 else 0)]
-		6: return "Nảy sang mục tiêu mới: %d → %d" % [current+(1 if selected_robot == 1 else 0),next+(1 if selected_robot == 1 else 0)]
+		4: return "Sát thương cháy/giây: %.1f → %.1f" % [(0.6 if combat.weapon_id() == 3 else 0)+current*0.5,(0.6 if combat.weapon_id() == 3 else 0)+next*0.5]
+		5: return "Xuyên thêm: %d → %d địch" % [current+(3 if combat.weapon_id() == 4 else 1 if combat.weapon_id() == 8 else 12 if combat.weapon_id() == 9 else 0),next+(3 if combat.weapon_id() == 4 else 1 if combat.weapon_id() == 8 else 12 if combat.weapon_id() == 9 else 0)]
+		6: return "Nảy sang mục tiêu mới: %d → %d" % [current+(1 if combat.weapon_id() == 1 else 0),next+(1 if combat.weapon_id() == 1 else 0)]
 		7:
 			if admin_enabled and admin_free_skill: return "Giảm hồi chiêu: %d%% → %d%%\nAdmin đang bỏ hồi kỹ năng" % [current*10,next*10]
 			return "Hồi kỹ năng: %.1f → %.1f giây" % [Shooter.SKILL_COOLDOWNS[selected_robot]*(1-current*0.1),Shooter.SKILL_COOLDOWNS[selected_robot]*(1-next*0.1)]
+		8: return "Đường chéo: 0 → 2 • sát thương mỗi viên 70%"
+		9: return "Đạn phía sau: 0 → 1 • sát thương 80%"
+		10: return "Nảy tường: %d → %d lần" % [current,next]
+		11: return "Độc/giây: %.1f → %.1f • kéo dài 3 giây" % [(1.2 if combat.weapon_id() == 11 else 0)+current*0.5,(1.2 if combat.weapon_id() == 11 else 0)+next*0.5]
+		12: return "Làm chậm: %.1f → %.1f giây" % [(1.4 if combat.weapon_id() == 2 else 0.6 if current > 0 else 0)+current*0.4,(1.4 if combat.weapon_id() == 2 else 0.6)+next*0.4]
+		13: return "Nổ lan: %d%% → %d%% sát thương" % [(65 if combat.weapon_id() in [7,10] else 0)+current*18,(65 if combat.weapon_id() in [7,10] else 0)+next*18]
+		14: return "Drone: %d → %d • mỗi 0.8 giây" % [current,next]
+		15: return "Lưỡi xoay: %d → %d • tầm 78" % [current,next]
 	return ""
 
 func show_upgrades() -> void:
@@ -1024,7 +1035,7 @@ func notice(text: String) -> void:
 func update_hud() -> void:
 	var clock := time_text() if mode != "blitz" else "%02d:%02d" % [int(maxf(0,90-elapsed))/60,int(maxf(0,90-elapsed))%60]
 	hud.text = "HP %d/5    %s    %s %d\nSCORE %d  •  KILL ×%d" % [hp,clock,"WAVE" if mode != "blitz" else "BLITZ",wave,score+int(elapsed),combo]
-	weapon_label.text = "%s • LV %d" % [Shooter.WEAPONS[selected_robot],level]
+	weapon_label.text = "%s • LV %d" % [Shooter.WEAPONS[combat.weapon_id()],level]
 	if mode == "campaign": weapon_label.text += "  •  S%d R%d" % [active_stage+1,campaign_room]
 	xp_bar.max_value = xp_required()
 	xp_bar.value = xp
@@ -1093,6 +1104,8 @@ func check_missions() -> void:
 			notice("MISSION • +15 COINS +1 TICKET")
 
 func load_profile() -> void:
+	selected_weapon = -1
+	shoot_while_moving = false
 	var config := ConfigFile.new()
 	if config.load(save_path) == OK:
 		best_score = maxi(0,int(config.get_value("record","shooter_score",0)))
@@ -1105,6 +1118,8 @@ func load_profile() -> void:
 			for id in saved:
 				if id is int and id >= 0 and id < 4 and not owned_skins.has(id):
 					owned_skins.append(id)
+		selected_weapon = clampi(int(config.get_value("profile","weapon",-1)),-1,Shooter.WEAPONS.size()-1)
+		shoot_while_moving = bool(config.get_value("settings","shoot_while_moving",false))
 		selected_skin = int(config.get_value("profile","selected",0))
 		if not owned_skins.has(selected_skin): selected_skin = 0
 		owned_robots = [0]
@@ -1153,6 +1168,8 @@ func save_profile() -> void:
 	config.set_value("profile","selected",selected_skin)
 	config.set_value("profile","robots",owned_robots)
 	config.set_value("profile","robot",selected_robot)
+	config.set_value("profile","weapon",selected_weapon)
+	config.set_value("settings","shoot_while_moving",shoot_while_moving)
 	config.set_value("settings","sound",sound_on)
 	config.set_value("settings","haptics",haptics_on)
 	if admin_enabled:
@@ -1200,6 +1217,7 @@ func buy_or_equip(index: int) -> void:
 func show_settings() -> void:
 	clear_cards("SETTINGS","Âm thanh, hiệu ứng và điều khiển.")
 	add_button("HOW TO PLAY",show_help)
+	add_button("BẮN KHI DI CHUYỂN: "+("BẬT" if shoot_while_moving else "TẮT"),func(): shoot_while_moving = not shoot_while_moving; save_profile(); show_settings())
 	add_button("SOUND: " + ("ON" if sound_on else "OFF"),func(): sound_on = not sound_on; audio.enabled = sound_on; audio.stop_all(); save_profile(); show_settings())
 	add_button("LOW EFFECTS: "+("ON" if low_effects else "OFF"),func(): low_effects = not low_effects; save_profile(); show_settings())
 	add_button("VIBRATION: " + ("ON" if haptics_on else "OFF"),func(): haptics_on = not haptics_on; save_profile(); show_settings())
@@ -1247,7 +1265,7 @@ func show_admin() -> void:
 		add_button("ENABLE ADMIN • UNLOCK ALL",switch_admin.bind(true))
 	else:
 		add_button("TEST OPTIONS",show_admin_options)
-		add_button("UPGRADE LAB • ALL 8",show_upgrade_lab)
+		add_button("UPGRADE LAB • ALL 16",show_upgrade_lab)
 		add_button("SUMMON BOSS" if admin_context else "START BOSS TEST",admin_boss)
 		add_button("ENEMY LAB",show_enemy_lab)
 		if not admin_context:
@@ -1397,7 +1415,7 @@ func show_robots(index := -1) -> void:
 	show_menu()
 	robot_gallery_index = selected_robot if index < 0 else clampi(index,0,RobotRoster.NAMES.size()-1)
 	var id := robot_gallery_index
-	clear_cards("ROBOT HANGAR","ADMIN • ALL ROBOTS FREE" if admin_enabled else "Choose your pilot • %d shards\nCosmetic only. Summon or exchange for new pilots." % summon.shards)
+	clear_cards("ROBOT HANGAR","ADMIN • ALL ROBOTS FREE" if admin_enabled else "Choose your pilot • %d shards\nEach pilot has a unique skill. Choose weapons separately in Arsenal." % summon.shards)
 	cards.add_theme_constant_override("separation",14)
 	var portrait := Preview.new()
 	portrait.actor = id
@@ -1660,3 +1678,31 @@ func show_rewards() -> void:
 	add_button("NHIỆM VỤ",show_lobby_missions)
 	add_button("SUMMON",show_summon)
 	add_button("VỀ SẢNH",show_menu)
+
+func show_armory(index := -2) -> void:
+	show_menu()
+	armory_preview = selected_weapon if index == -2 else clampi(index,-1,Shooter.WEAPONS.size()-1)
+	var id := selected_robot if armory_preview == -1 else armory_preview
+	clear_cards("KHO VŨ KHÍ","12 vũ khí mở sẵn để thử • không tốn vàng\nRobot giữ kỹ năng riêng khi đổi vũ khí.")
+	cards.add_theme_constant_override("separation",12)
+	var preview := preload("res://scripts/weapon_preview.gd").new()
+	preview.weapon = id
+	preview.custom_minimum_size = Vector2(560,180)
+	cards.add_child(preview)
+	result_label(cards,("THEO ROBOT • " if armory_preview == -1 else "")+Shooter.WEAPONS[id],30,Shooter.COLORS[id])
+	result_label(cards,Shooter.INFO[id],24,Color("abcad6"))
+	result_label(cards,"Mỗi viên %.2f • nhịp %.2fs • tầm %d" % [Shooter.DAMAGES[id],Shooter.INTERVALS[id],Shooter.RANGES[id]],22)
+	var equip := add_button("ĐANG TRANG BỊ" if selected_weapon == armory_preview else "TRANG BỊ MIỄN PHÍ",equip_weapon.bind(armory_preview))
+	equip.disabled = selected_weapon == armory_preview
+	add_button("DÙNG VŨ KHÍ ĐẶC TRƯNG ROBOT",show_armory.bind(-1))
+	for i in range(Shooter.WEAPONS.size()):
+		var choice := add_button(("✓ " if selected_weapon == i else "")+Shooter.WEAPONS[i],show_armory.bind(i))
+		choice.custom_minimum_size.y = 76
+		choice.add_theme_color_override("font_color",Shooter.COLORS[i])
+	add_button("VỀ SẢNH",show_menu)
+
+func equip_weapon(index: int) -> void:
+	if state != "menu" or index < -1 or index >= Shooter.WEAPONS.size(): return
+	selected_weapon = index
+	save_profile()
+	show_armory(index)

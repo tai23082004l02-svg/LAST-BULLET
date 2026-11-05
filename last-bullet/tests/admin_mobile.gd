@@ -37,7 +37,7 @@ func run() -> void:
 	game.toggle_admin_option("max")
 	game.toggle_admin_option("skill")
 	game.start_run()
-	for i in range(8): assert(game.upgrades[i] == Balance.UPGRADE_CAPS[i])
+	for i in range(Balance.UPGRADE_CAPS.size()): assert(game.upgrades[i] == Balance.UPGRADE_CAPS[i])
 	game.hurt_player(game.player)
 	assert(game.hp == 5)
 	game.request_skill()

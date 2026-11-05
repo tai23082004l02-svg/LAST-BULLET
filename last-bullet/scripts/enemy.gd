@@ -12,6 +12,10 @@ var visual_lean := 0.0
 var dash := Vector2.ZERO
 var fire_clock := 1.8
 var chilled := 0.0
+var poisoned := 0.0
+var poison_power := 0.0
+var poison_tick := 0.0
+var thermal_lock := 0.0
 var burning := 0.0
 var burn_power := 0.0
 var burn_tick := 0.0
@@ -70,6 +74,8 @@ func _draw() -> void:
 		draw_arc(Vector2.ZERO,radius+8,0,TAU*(1-clampf(fire_clock/0.5,0,1)),28,Color("ff8562"),3)
 	if chilled > 0:
 		draw_arc(Vector2.ZERO,radius+4,0,TAU,24,Color("9feaff"),2)
+	if poisoned > 0:
+		draw_arc(Vector2.ZERO,radius+7,0,TAU,20,Color("b8ed68"),2)
 	if burning > 0:
 		draw_circle(Vector2(0,radius*0.7),radius*0.6,Color(1,0.4,0.1,0.3))
 	if (kind == 5 or boss_style in [2,3,4]) and hazard_clock > 0:

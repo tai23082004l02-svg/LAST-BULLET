@@ -1,14 +1,21 @@
-# LAST BULLET — v0.8.0
+# LAST BULLET — v0.9.0
 ZORVYKA Games • Auto Fire. Endless Chaos.
 
 Godot 4 portrait robot survival shooter. Open `last-bullet/project.godot` from the repository root (or `project.godot` when already inside this directory). Validated with Godot 4.6.3.
 
 ## Chơi trên điện thoại
-Kéo ở bất kỳ vùng trống nào để di chuyển. Chạm đơn không kích hoạt; cần ẩn xuất hiện sau khi kéo ít nhất 12 pixel logic. Robot tự chọn địch gần trong tầm có đường bắn thông thoáng và tự bắn cả khi di chuyển. Đạn bạn màu sáng; né đạn đỏ/cam và vùng báo động của địch.
+Kéo ở bất kỳ vùng trống nào để di chuyển. Chạm đơn không kích hoạt; cần ẩn xuất hiện sau khi kéo ít nhất 12 pixel logic. Robot tự chọn địch gần trong tầm có đường bắn thông thoáng. Mặc định thả tay để bắn, kéo để né. Trong Cài đặt có thể bật BẮN KHI DI CHUYỂN nếu thích kiểu v0.8. Drone/lưỡi xoay vẫn hoạt động khi di chuyển. Đạn bạn màu sáng; né đạn đỏ/cam và vùng báo động của địch.
 
 Nhấn đúp nhanh tại cùng một vùng trống để dùng kỹ năng (Space trên PC). Nút skill đã được ẩn; dòng nhỏ phía dưới chỉ báo sẵn sàng/hồi chiêu và không chặn kéo. Một lần chạm, kéo hoặc giữ lâu không kích hoạt skill. WASD/phím mũi tên di chuyển, Esc tạm dừng, F11 fullscreen cửa sổ desktop. Đã bỏ hoàn toàn gameplay Deflect, Perfect và viên đạn tồn tại mãi của v0.7.
 
-## Robot, vũ khí và kỹ năng
+## Kho vũ khí mới
+Tab **VŨ KHÍ** ở thanh dưới sảnh → xem vũ khí → **TRANG BỊ MIỄN PHÍ**. 12 loại đều mở sẵn để thử, không trừ vàng/vé: súng trường, súng điện, băng, phun lửa, laser, shotgun, súng trinh sát, tên lửa dẫn đường, cung xuyên, boomerang, phóng lựu và súng độc.
+
+Chọn vũ khí độc lập với robot; **DÙNG VŨ KHÍ ĐẶC TRƯNG ROBOT** trả về mặc định theo robot. Chỉ đổi ở sảnh, không đổi giữa trận. Lựa chọn được nhớ riêng theo profile. [Chi tiết cơ chế và phối hợp](docs/ARSENAL.md).
+
+![Kho vũ khí v0.9](docs/previews/v0.9-armory.png)
+
+## Robot, vũ khí mặc định và kỹ năng
 | Robot | Vũ khí | Kỹ năng |
 |---|---|---|
 | Aegis | Súng trường | Khiên 3 giây, tối đa 3 lần chặn |
@@ -22,7 +29,7 @@ Nhấn đúp nhanh tại cùng một vùng trống để dùng kỹ năng (Space
 Cùng 5 HP và hitbox; vũ khí/kỹ năng có khác biệt thực sự. Đạn thường hết tầm hoặc trúng tường/mục tiêu thì biến mất; nâng cấp xuyên/nảy chỉ thêm số lần hữu hạn, không có đạn bất tử.
 
 ## Nâng cấp và nhiệm vụ
-8 nâng cấp: Hỏa lực, Tốc xạ, Đa đạn, Chí mạng, Đạn cháy, Xuyên giáp, Đạn liên hoàn, Hồi kỹ năng. Chọn một trong tối đa ba thẻ khi lên cấp; giao tranh dừng, HUD ẩn và có lớp chặn chạm. Thông số trước → sau lấy từ vũ khí đang dùng.
+16 nâng cấp: Hỏa lực, Tốc xạ, Đa đạn, Chí mạng, Đạn cháy, Xuyên giáp, Đạn liên hoàn, Hồi kỹ năng, Đạn chéo, Đạn sau lưng, Nảy tường, Nọc độc, Đạn lạnh, Đạn nổ, Drone hộ vệ, Lưỡi xoay. Băng + lửa tạo sốc nhiệt; độc và cháy gây sát thương độc lập. Drone bắn hỗ trợ, lưỡi xoay bảo vệ cận chiến. Chọn một trong tối đa ba thẻ khi lên cấp; giao tranh dừng, HUD ẩn và có lớp chặn chạm. Thông số trước → sau lấy từ vũ khí đang dùng.
 
 Mỗi trận có 3 nhiệm vụ: hạ 15 địch, dùng 3 kỹ năng, chuỗi hạ 10 địch trong khoảng 3 giây giữa các lần hạ. Mỗi mục tiêu tự trả 15 vàng + 1 vé đúng một lần. Kết quả hiển thị điểm/thời gian/số địch, phần thưởng, chi tiết bắn/trúng/chí mạng/kỹ năng. X2 vàng nhận ngay một lần cho trận vừa xong, đúng profile; không có quảng cáo thật hay mô phỏng.
 
@@ -45,6 +52,6 @@ git pull --ff-only
 
 [Hướng dẫn Android/Termux](docs/ANDROID_TERMUX.md) · [Bàn giao](docs/SESSION_HANDOFF.md) · [Kiểm tra](docs/TEST_RESULTS.md) · [Cơ chế shooter](docs/SHOOTER.md)
 
-![Shooter v0.8](docs/previews/v0.8-shooter.png)
+![Build v0.9](docs/previews/v0.9-build.png)
 
 Các tài liệu/ảnh phiên bản cũ là lịch sử. v0.8 thay thế luật một viên đạn/Deflect và robot chỉ khác ngoại hình. Bản này chưa benchmark điện thoại thật hoặc xuất APK.

@@ -1,3 +1,15 @@
+# v0.9.0 Arsenal validation — 2026-11-05
+
+Godot4.6.3 Linux Compatibility. All13 current suites pass: arsenal, arsenal_stress, shooting, shooter_campaign, shooter_stress, admin_mobile, robots, summon, graphics, lobby, results, upgrade_ui and double_tap. Editor import passes.
+
+New arsenal suite exercises actual damage for all12 weapons, no-cost/persistent/profile-safe selection and runtime guards, stop/moving-fire policy, diagonal/back directions, finite ricochet, cover blocking splash while front-side wall explosions still damage, exact boomerang outbound/return hits, native elemental upgrades actually increasing duration/power, poison/burn/thermal damage, drones/blades and frozen auxiliary state. UI/stat checks expanded from8 to16 upgrade slots.
+
+Arsenal stress simulates540s across12 weapons with all16 upgrades, mixed robot skills, pillars and both movement modes. Previous seven-robot stress covers630s Survival+90s Blitz. Counts and finite positions checked, not a real-time benchmark. Existing campaign suite runs all five combat timelines and boss patterns/rewards; save migration, summon, x2 and double-tap guards retained.
+
+Rendered loadout (boomerang/laser) and build combat at360×800, new multiline upgrade cards at360×640 via Xvfb/Mesa. Physical S23 Ultra firing feel, balance, frame rate/thermal/battery and APK export remain unverified. Baseline historical notes below are preserved; current behavior is in ARSENAL.md.
+
+---
+
 # Double-tap control patch — 2026-11-05
 
 Skill button removed; skill activated by two sequential short taps on blank screen. New tests/double_tap.gd passes timing/distance/hold/drag/cancel/cooldown/multitouch/GUI/state/emulated-mouse cases. Shooting, admin_mobile, upgrade_ui, graphics and lobby regressions rechecked. The suite list below describes the v0.8 baseline; double_tap is now the eleventh suite. Rendered 360×800 layout reviewed; physical-device gesture feel not yet verified.

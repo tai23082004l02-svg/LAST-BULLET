@@ -1,6 +1,6 @@
-# Campaign & Summon — v0.8.0
+# Campaign & Summon — v0.9.0
 
-Gameplay is now auto-fire. Drag anywhere except buttons to move; use the robot skill to survive. Deflect, permanent bullets, Perfect and return-strike boss mechanics from older guides are retired.
+Gameplay is now auto-fire. Drag anywhere except buttons to move; double-tap for the robot skill. Default release-to-fire; optional moving fire in Settings. Pick one of12 free weapons in the VŨ KHÍ tab; see ARSENAL.md. Deflect, permanent bullets, Perfect and return-strike boss mechanics from older guides are retired.
 
 ## Campaign
 Five stages, each with three timed combat waves and a boss. Upgrades carry across waves within one run; retry resets run upgrades. Boss arrival times remain 90/105/120/120/135 seconds.

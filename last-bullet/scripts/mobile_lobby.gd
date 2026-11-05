@@ -122,10 +122,10 @@ func _ready() -> void:
 	bottom_bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	bottom_bar.add_theme_stylebox_override("panel",NeonArt.panel(Color("0b2031"),Color("244f63"),22))
 	add_child(bottom_bar)
-	var routes: Array[Callable] = [game.show_menu,game.show_robots,game.show_summon,game.show_skins]
-	for i in range(4):
-		var button := make_button(bottom_bar,"\n"+["SẢNH","ROBOT","SUMMON","NGOẠI HÌNH"][i],routes[i])
-		button.add_theme_font_size_override("font_size",20)
+	var routes: Array[Callable] = [game.show_menu,game.show_robots,game.show_armory,game.show_summon,game.show_skins]
+	for i in range(5):
+		var button := make_button(bottom_bar,"\n"+["SẢNH","ROBOT","VŨ KHÍ","SUMMON","SKIN"][i],routes[i])
+		button.add_theme_font_size_override("font_size",18)
 		button.add_theme_stylebox_override("normal",StyleBoxEmpty.new())
 		var icon := Control.new()
 		icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -179,7 +179,7 @@ func refresh(reset_preview := false) -> void:
 		stage_picker.text = "CHIẾN DỊCH\nMÀN %02d • %s" % [index+1,CampaignData.data(index).name]
 	else:
 		stage_picker.text = "CHẾ ĐỘ\n"+("BLITZ • 90 GIÂY" if game.preferred_mode == "blitz" else "SURVIVAL • "+game.preferred_layout.to_upper())
-	for i in range(4):
+	for i in range(5):
 		nav_buttons[i].add_theme_color_override("font_color",Color("a5ffe7") if i == active_page else Color("7192a8"))
 		nav_icons[i].queue_redraw()
 	queue_redraw()
@@ -199,7 +199,7 @@ func open_home() -> void:
 func open_section(title_text: String, front: bool) -> void:
 	visible = front
 	home_view.hide()
-	active_page = 1 if title_text.contains("ROBOT HANGAR") else 2 if title_text.contains("SUMMON") else 3 if title_text.contains("BULLET SKINS") else 0
+	active_page = 1 if title_text.contains("ROBOT HANGAR") else 2 if title_text.contains("KHO VŨ KHÍ") else 3 if title_text.contains("SUMMON") else 4 if title_text.contains("BULLET SKINS") else 0
 	if front:
 		top_bar.show()
 		bottom_bar.show()
@@ -293,10 +293,10 @@ func layout(view_height: float, margins: Vector2) -> void:
 	hero_equip.size = Vector2(280,64)
 	bottom_bar.position = Vector2(24,height-128-safe.y)
 	bottom_bar.size = Vector2(672,104)
-	for i in range(4):
-		nav_buttons[i].position = Vector2(i*168,0)
-		nav_buttons[i].size = Vector2(168,104)
-		nav_icons[i].position = Vector2(84,27)
+	for i in range(5):
+		nav_buttons[i].position = Vector2(i*134.4,0)
+		nav_buttons[i].size = Vector2(134.4,104)
+		nav_icons[i].position = Vector2(67.2,27)
 	stage_card.position = Vector2(40,bottom_bar.position.y-336)
 	stage_card.size = Vector2(640,198)
 	stage_picker.position = Vector2(20,6)
@@ -356,9 +356,13 @@ func draw_nav(canvas: Control, index: int) -> void:
 			canvas.draw_rect(Rect2(-12,-3,24,9),Color("0c2332"))
 			canvas.draw_line(Vector2(-8,0),Vector2(8,0),Color("bafff0"),3)
 		2:
+			canvas.draw_rect(Rect2(-19,-7,30,14),color,false,3)
+			canvas.draw_line(Vector2(10,0),Vector2(24,0),color,5)
+			canvas.draw_line(Vector2(-10,7),Vector2(-10,18),color,5)
+		3:
 			canvas.draw_rect(Rect2(-13,-18,26,36),color,false,3)
 			canvas.draw_line(Vector2(-8,0),Vector2(8,0),color,3)
-		3:
+		4:
 			var points := PackedVector2Array()
 			for i in range(8): points.append(Vector2.from_angle(-PI/2+i*PI/4)*(18 if i%2 == 0 else 7))
 			canvas.draw_colored_polygon(points,color)

@@ -1,3 +1,7 @@
+# Current: v0.9 Arsenal
+
+The v0.8 notes below describe the original seven-weapon baseline. **ARSENAL.md supersedes weapon selection, movement firing and upgrade counts**: now12 freely selectable primaries independent of robot skills,16 upgrades, default release-to-fire with a saved moving-fire option. Double-tap skill controls from the latest patch remain. Read ARSENAL.md and README first.
+
 # v0.8 shooter implementation
 
 The approved change replaces permanent-bullet Deflect combat with auto-aim/auto-fire and double-tap robot skills. Seven weapon profiles and seven skills live in scripts/combat.gd. No Deflect/capture/return-strike path remains in live combat; scripts/bullet.gd now holds static cosmetic preview helpers only.
