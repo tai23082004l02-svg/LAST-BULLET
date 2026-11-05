@@ -16,6 +16,10 @@ func run() -> void:
 		assert(tex.atlas == NeonArt.SHEET and tex.get_width() > 0 and tex.get_height() > 0)
 		assert(Rect2(Vector2.ZERO,NeonArt.SHEET.get_size()).encloses(tex.region))
 	assert(NeonArt.textures.size() == 8)
+	for i in range(6):
+		var tex := CampaignArt.texture(i)
+		assert(tex.atlas == CampaignArt.SHEET)
+		assert(Rect2(Vector2.ZERO,CampaignArt.SHEET.get_size()).encloses(tex.region))
 	game.show_menu()
 	await process_frame
 	var count := get_node_count()

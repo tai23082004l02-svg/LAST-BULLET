@@ -1,3 +1,16 @@
+# v0.6.0 validation — 2026-11-05
+
+**Godot 4.6.3**, Linux Compatibility. Script import and existing 7 suites pass after the new systems; roster purchase expectations updated to the approved shard-exchange design.
+
+- `tests/campaign.gd`: complete active timelines for all 5 stages (90/105/120/120/135 seconds before each boss), combat-wave transitions/upgrades, valid obstacle bounds and persistent bullet identity, five boss styles, Mirror shield states, zone telegraph, actual boss kills → unlocks/stars/rewards. Duplicate finish does not repay. Save reload restores 5 cleared stages; replay pays only repeat reward; failure does not unlock. Campaign does not overwrite Survival best score. Magnetic steering keeps speed/caps turn; hot tiles warn before damage. Final Core phase-two charge, same-bullet capture/release and single-use x4 return strike tested explicitly.
+- `tests/summon.gd`: invalid batches/funds rejected before RNG/spending, 1,000 pulls obey max 10/50 gaps, forced Legendary priority, free admin ×10, duplicate shard amounts, exchange cost/owned guards, profile roundtrip and receipt persistence. 10,000 seeded base rolls (pity reset per sample) fall within test tolerances around 75/20/5; this checks implementation rather than promising session outcomes. UI double-click/skip/review does not charge again, reload after reveal starts preserves inventory/receipt. Admin/free and normal inventories/pity remain separate.
+- `tests/graphics.gd` also validates all 6 campaign atlas regions/shared texture bounds. Rendered stage selection, every themed arena/boss, chamber/reveal/results and summon at 360×800 reviewed through Xvfb/Mesa. New PNGs are in `docs/previews/`.
+- Five boss sprites and one summon chamber added as a cached, mipmapped atlas. Environmental effects do not create extra projectiles; obstacle routes are cached/bounded. Tests use separate temporary profiles and clean up successful runs.
+
+Not verified: physical Android, touch/notch edge cases, FPS/heat/battery on phones, APK export or real-player difficulty balance. Boss timing targets a short stage but fight duration depends on skill. No online services, paid draws, ads or account backend were added.
+
+---
+
 # v0.5.0 validation — 2026-11-05
 
 Engine: **Godot 4.6.3**, Linux Compatibility renderer. No Android hardware test.

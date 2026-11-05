@@ -3,7 +3,7 @@ config_version=5
 [application]
 config/name="LAST BULLET"
 config/icon="res://art/neon/icon.png"
-config/version="0.5.0"
+config/version="0.6.0"
 run/main_scene="res://scenes/Main.tscn"
 config/features=PackedStringArray("4.3", "GL Compatibility")
 

@@ -1,15 +1,14 @@
 # LAST-BULLET
 
-**v0.5.0 — Admin, adaptive mobile layout and 7 robots**
+**v0.6.0 — Five-stage Campaign & Robot Summon**
 
-Godot 4.6.3 → open `last-bullet/project.godot` → F5. Close Godot before GitHub Desktop Fetch/Pull.
+Open `last-bullet/project.godot` in Godot 4.6.3 → F5. Close Godot before GitHub Desktop Fetch/Pull.
 
-**Unlock everything:** Menu → ADMIN → ENABLE ADMIN. Free robots/skins, god mode, upgrade/enemy labs and boss test. Normal progress is saved separately.
+- **PLAY → CAMPAIGN:** five themed arenas, three combat waves each, five illustrated bosses, stars and stage unlocks.
+- **SUMMON:** ×1/×10 ticket pulls, 75/20/5 base rates, 10/50 pity, duplicate shards and targeted exchanges. Existing owned robots stay owned.
+- **ADMIN:** all stages/robots/skins open, free summons, god mode and test labs; normal save stays separate.
+- Instant x2 gold, Survival and Blitz remain available. No payments or ads.
 
-**Characters:** Aegis, Volt, Frost, Ember, Nova, Cobalt and Scout. Choose under ROBOTS.
+[Full Campaign & Summon guide](last-bullet/docs/CAMPAIGN_SUMMON.md) · [Campaign selection](last-bullet/docs/previews/v0.6-campaign.png) · [Summon screenshot](last-bullet/docs/previews/v0.6-summon.png) · [Validation](last-bullet/docs/TEST_RESULTS.md)
 
-Larger buttons/text, taller-phone arena, safe-area-aware controls; desktop window 540×960 and F11 fullscreen.
-
-[Guide](last-bullet/README.md) · [Robot Hangar screenshot](last-bullet/docs/previews/v0.5-robots.png) · [Admin screenshot](last-bullet/docs/previews/v0.5-admin.png) · [Validation](last-bullet/docs/TEST_RESULTS.md)
-
-![Tall-phone gameplay](last-bullet/docs/previews/v0.5-mobile.png)
+![Machine Core gameplay](last-bullet/docs/previews/v0.6-core.png)

@@ -11,6 +11,28 @@ var enemies: Array[ArenaEnemy] = []
 var boss: ArenaEnemy
 var pickups: Array[Vector2] = []
 var fires: Array[Dictionary] = []
+const Campaign = preload("res://scripts/campaign_data.gd")
+const Summons = preload("res://scripts/summon_system.gd")
+const Reveal = preload("res://scripts/summon_reveal.gd")
+var summon: SummonSystem
+var campaign_unlocked := 1
+var campaign_cleared: Array[int] = []
+var campaign_stars: Array[int] = [0,0,0,0,0]
+var active_stage := 0
+var campaign_room := 1
+var campaign_won := false
+var run_tickets := 0
+var milestone_claimed: Array[bool] = [false,false]
+var summon_reveal: Control
+var summon_results: Array[Dictionary] = []
+var summon_revealed := false
+var obstacle_cache_mode := ""
+var obstacle_cache_layout := ""
+var obstacle_cache_stage := -1
+var obstacle_cache_arena := Rect2()
+var obstacle_cache_pillar := Rect2()
+var obstacle_cache: Array[Rect2] = []
+
 const FX = preload("res://scripts/visual_effects.gd")
 const Preview = preload("res://scripts/skin_preview.gd")
 var effects: Node2D
@@ -114,6 +136,7 @@ func _ready() -> void:
 	if mode_config.load(profile_mode_path()) == OK:
 		admin_enabled = bool(mode_config.get_value("mode","admin",false))
 	if admin_enabled: save_path = admin_profile_path()
+	summon = Summons.new()
 	load_profile()
 	effects = FX.new()
 	effects.z_index = 12
@@ -298,7 +321,7 @@ func show_menu() -> void:
 		enemy.hide()
 	if is_instance_valid(bullet):
 		bullet.hide()
-	clear_cards("LAST BULLET", "ZORVYKA Games • v0.5.0\n%s\nBEST SCORE %d" % ["ADMIN • ALL CONTENT UNLOCKED" if admin_enabled else "One Shot. Endless Chaos.",best_score])
+	clear_cards("LAST BULLET", "ZORVYKA Games • v0.6.0\n%s\nBEST SCORE %d" % ["ADMIN • ALL CONTENT UNLOCKED" if admin_enabled else "One Shot. Endless Chaos.",best_score])
 	cards.add_theme_constant_override("separation",8)
 	var mascot := Preview.new()
 	mascot.actor = selected_robot
@@ -306,7 +329,7 @@ func show_menu() -> void:
 	cards.add_child(mascot)
 	cards.move_child(mascot,1)
 	add_button("PLAY", show_modes)
-	add_button("HOW TO PLAY", show_help)
+	add_button("SUMMON • "+("FREE" if admin_enabled else "%d TICKETS" % summon.tickets),show_summon)
 	add_button("ROBOTS • "+RobotRoster.NAMES[selected_robot],show_robots)
 	add_button("SKINS • %d COINS" % coins, show_skins)
 	add_button("SETTINGS", show_settings)
@@ -324,12 +347,17 @@ func show_help() -> void:
 
 func show_modes() -> void:
 	clear_cards("CHOOSE YOUR RUN","Open arena to learn. Reflector to experiment. Blitz for a quick score chase.")
+	add_button("CAMPAIGN • 5 STAGES",show_campaign)
 	add_button("SURVIVAL • OPEN",start_run.bind("survival","open"))
 	add_button("SURVIVAL • REFLECTOR",start_run.bind("survival","reflector"))
 	add_button("BLITZ • 90 SECONDS",start_run.bind("blitz","open"))
 	add_button("BACK",show_menu)
 
 func start_run(run_mode := "survival", layout := "open") -> void:
+	campaign_room = 1
+	campaign_won = false
+	run_tickets = 0
+	milestone_claimed = [false,false]
 	effects.effects.clear()
 	move_clock = 0
 	player_lean = 0
@@ -499,7 +527,8 @@ func _physics_process(delta: float) -> void:
 	boss_label.visible = playing_ui and is_instance_valid(boss)
 	boss_bar.visible = boss_label.visible
 	if boss_label.visible:
-		boss_label.text = "BULLET EATER • " + ("EXPOSED • RETURN ×4" if boss.weak_timer > 0 else "CAPTURING" if bullet.capture > 0 else "HUNTING")
+		var boss_name: String = Campaign.data(active_stage).boss if mode == "campaign" else "BULLET EATER"
+		boss_label.text = boss_name+" • " + ("CAPTURING" if bullet.capture > 0 else boss.status_text())
 		boss_bar.max_value = boss.max_hp
 		boss_bar.value = boss.hp
 	toast_time = maxf(0,toast_time-delta)
@@ -515,8 +544,9 @@ func _physics_process(delta: float) -> void:
 		challenge_complete = true
 		finish_run()
 		return
+	if mode == "campaign" and advance_campaign(): return
 	feedback = maxf(0,feedback-delta)
-	wave = 1 + int(elapsed / (15 if mode == "blitz" else 20))
+	wave = 1+active_stage+campaign_room-1 if mode == "campaign" else 1 + int(elapsed / (15 if mode == "blitz" else 20))
 	invulnerable = maxf(0,invulnerable-delta)
 	cooldown = 0.0 if admin_enabled and admin_free_deflect else maxf(0,cooldown-delta)
 	combo_timer -= delta
@@ -533,8 +563,7 @@ func _physics_process(delta: float) -> void:
 		aim = movement.normalized()
 	player += movement * Balance.PLAYER_SPEED * delta
 	player = player.clamp(Balance.ARENA.position+Vector2(18,18),Balance.ARENA.end-Vector2(18,18))
-	if arena_layout == "reflector":
-		player = Geometry.resolve(player,18)
+	player = Geometry.resolve_all(player,18,world_obstacles())
 	if deflect_window > 0:
 		if not try_deflect(false):
 			deflect_window -= delta
@@ -547,39 +576,49 @@ func _physics_process(delta: float) -> void:
 	player_actor.flash = maxf(0,invulnerable-1.1)*0.8 if invulnerable <= 1.2 else 0.0
 	bullet.effects_reduced = low_effects or enemies.size() > 24
 	bullet.advance(delta,self)
+	if state != "playing": return
+	if mode == "campaign":
+		var hazard_index := 0
+		for box in Campaign.hot_zones(Balance.ARENA,active_stage):
+			if Campaign.heat_state(elapsed,hazard_index) == 2 and box.grow(15).has_point(player): hurt_player(box.get_center())
+			hazard_index += 1
+		if state != "playing": return
 	slow = maxf(0,slow-delta)
 	var enemy_delta := delta * (0.35 if slow > 0 else 1.0)
 	for enemy in enemies.duplicate():
 		if not is_instance_valid(enemy):
 			continue
-		var target := Geometry.navigation_target(enemy.position,player,enemy.radius) if arena_layout == "reflector" and enemy.kind != 5 else player
+		var target := Geometry.navigate(enemy.position,player,enemy.radius,world_obstacles()) if enemy.kind != 5 else player
 		enemy.advance(enemy_delta,target)
 		enemy.weak_timer = maxf(0,enemy.weak_timer-(delta-enemy_delta))
-		if arena_layout == "reflector":
-			enemy.position = Geometry.resolve(enemy.position,enemy.radius)
+		enemy.position = Geometry.resolve_all(enemy.position,enemy.radius,world_obstacles())
 		if player.distance_to(enemy.position) < enemy.radius + 17:
 			hurt_player(enemy.position)
-		if enemy.kind == 5 and enemy.hazard_active() and player.distance_to(enemy.hazard_point) < 83:
+		if (enemy.kind == 5 or enemy.boss_style in [2,3,4]) and enemy.hazard_active() and player.distance_to(enemy.hazard_point) < 83:
 			hurt_player(enemy.hazard_point)
 		if state == "results":
 			return
 	spawn_timer -= delta
-	if spawn_timer <= 0:
+	if spawn_timer <= 0 and not (mode == "campaign" and boss_spawned):
 		spawn_timer = maxf(0.32,1.4 - wave * 0.07) if mode != "blitz" else [1.2,0.95,0.8,0.7,0.6,0.5][mini(wave-1,5)]
-		if enemies.size() < Balance.MAX_ENEMIES:
+		if mode == "campaign": spawn_timer = maxf(0.5,1.3-active_stage*0.1-campaign_room*0.08)
+		if enemies.size() < (36 if mode == "campaign" else Balance.MAX_ENEMIES):
 			var pool := [0]
 			if wave >= 2: pool.append(1)
 			if wave >= 3: pool.append(2)
 			if wave >= 4: pool.append(4)
 			if wave >= 5: pool.append(5)
-			if mode == "blitz":
+			if mode == "campaign":
+				var roster: Array = Campaign.data(active_stage).pool
+				spawn_enemy(roster[rng.randi_range(0,roster.size()-1)])
+			elif mode == "blitz":
 				var formations := [[0,0,0],[0,1,0],[0,1,2],[1,0,4],[2,1,5],[4,1,2,5]]
 				var formation: Array = formations[mini(wave-1,5)]
 				spawn_enemy(formation[spawn_index%formation.size()])
 				spawn_index += 1
 			else:
 				spawn_enemy(pool[rng.randi_range(0,pool.size()-1)])
-	if mode != "blitz" and elapsed >= 240 and not boss_spawned:
+	if mode == "survival" and elapsed >= 240 and not boss_spawned:
 		boss_spawned = true
 		spawn_enemy(3)
 		notice("BULLET EATER HAS ARRIVED")
@@ -613,6 +652,12 @@ func _physics_process(delta: float) -> void:
 		level += 1
 		show_upgrades()
 	check_missions()
+	if not milestone_claimed[0] and elapsed >= 120:
+		milestone_claimed[0] = true
+		grant_tickets(1)
+	if not milestone_claimed[1] and kills >= 30:
+		milestone_claimed[1] = true
+		grant_tickets(1)
 	update_hud()
 	queue_redraw()
 
@@ -634,6 +679,12 @@ func nearest_enemy(point: Vector2) -> ArenaEnemy:
 func spawn_enemy(kind: int) -> void:
 	var enemy := ArenaEnemy.new()
 	enemy.setup(kind,wave)
+	if kind == 3 and mode == "campaign":
+		enemy.boss_style = active_stage
+		enemy.hp = [20.0,32.0,42.0,50.0,75.0][active_stage]
+		enemy.max_hp = enemy.hp
+		enemy.speed = 65+active_stage*5
+		enemy.capture_ready = 4
 	enemy.phase = rng.randf_range(0,2)
 	var spawn := Vector2.ZERO
 	for attempt in range(16):
@@ -647,7 +698,7 @@ func spawn_enemy(kind: int) -> void:
 	if spawn.distance_to(player) <= 200:
 		enemy.free()
 		return
-	enemy.position = Geometry.resolve(spawn,enemy.radius) if arena_layout == "reflector" else spawn
+	enemy.position = Geometry.resolve_all(spawn,enemy.radius,world_obstacles())
 	add_child(enemy)
 	enemy.physics_interpolation_mode = Node.PHYSICS_INTERPOLATION_MODE_ON
 	enemy.reset_physics_interpolation()
@@ -658,7 +709,7 @@ func spawn_enemy(kind: int) -> void:
 func damage_enemy(enemy: ArenaEnemy, damage: float, impact := false, incoming := Vector2.ZERO) -> void:
 	if not enemies.has(enemy):
 		return
-	if enemy.kind == 4 and (not impact or enemy.blocks(incoming)):
+	if (enemy.kind == 4 and not impact) or (impact and enemy.blocks(incoming)):
 		audio.play_event("bounce",0.8)
 		return
 	if enemy.kind == 3 and impact and bullet.return_strike and enemy.weak_timer > 0:
@@ -684,12 +735,16 @@ func damage_enemy(enemy: ArenaEnemy, damage: float, impact := false, incoming :=
 		notice("%d KILL CHAIN!" % combo)
 	if pickups.size() < 180:
 		pickups.append(enemy.position)
-	if enemy == boss:
+	var was_boss := enemy == boss
+	if was_boss:
 		boss = null
 		notice("BULLET EATER DEFEATED!")
 	enemies.erase(enemy)
 	enemy.queue_free()
 	enemy_killed.emit(points)
+	if was_boss and mode == "campaign":
+		campaign_won = true
+		finish_run()
 
 func show_upgrades() -> void:
 	var available: Array[int] = []
@@ -742,19 +797,32 @@ func finish_run() -> void:
 	result_paid = true
 	var total := score+int(elapsed)
 	previous_record = blitz_best if mode == "blitz" else best_score
-	new_record = total > previous_record
+	new_record = mode != "campaign" and total > previous_record
 	if mode == "blitz":
 		blitz_best = maxi(blitz_best,total)
-	else:
+	elif mode != "campaign":
 		best_score = maxi(best_score,total)
 	lifetime_chain = maxi(lifetime_chain,best_perfect_chain)
 	var reward := mini(50,int(kills/5)+int(elapsed/30))
+	if mode == "campaign" and campaign_won:
+		var first := not campaign_cleared.has(active_stage)
+		if first: campaign_cleared.append(active_stage)
+		campaign_unlocked = maxi(campaign_unlocked,mini(5,active_stage+2))
+		var stars := 1+(1 if hp >= 3 else 0)+(1 if perfect_count >= 3 else 0)
+		campaign_stars[active_stage] = maxi(campaign_stars[active_stage],stars)
+		reward += 40+active_stage*20
+		grant_tickets(3 if first else 1)
+	if mode == "blitz" and challenge_complete: grant_tickets(1)
 	coins += reward
 	run_coins = reward+mission_coins
 	save_profile()
 	audio.stop_all()
 	audio.play_event("level_up" if challenge_complete else "defeat")
-	final_summary = "TIME %s  •  SCORE %d\nKILLS %d\nPERFECT %d  •  BEST STREAK %d\nDEFLECT %d/%d (%d%%)\n%s\nCOINS: run %d + missions %d = %d" % [time_text(),total,kills,perfect_count,best_perfect_chain,deflect_successes,attempts,deflect_rate(),("NEW RECORD! +%d" % (total-previous_record)) if new_record else "RECORD %d" % previous_record,reward,mission_coins,run_coins]
+	var record_text := "CAMPAIGN SCORE" if mode == "campaign" else (("NEW RECORD! +%d" % (total-previous_record)) if new_record else "RECORD %d" % previous_record)
+	final_summary = "TIME %s  •  SCORE %d\nKILLS %d\nPERFECT %d  •  BEST STREAK %d\nDEFLECT %d/%d (%d%%)\n%s\nCOINS: run %d + missions %d = %d" % [time_text(),total,kills,perfect_count,best_perfect_chain,deflect_successes,attempts,deflect_rate(),record_text,reward,mission_coins,run_coins]
+	final_summary += "\nTICKETS +%d • TOTAL %d" % [run_tickets,summon.tickets]
+	if mode == "campaign":
+		final_summary = ("STAGE CLEAR • %s" % "★".repeat(campaign_stars[active_stage]) if campaign_won else "STAGE FAILED • RETRY")+"\n"+Campaign.data(active_stage).name+"\n"+final_summary
 	if mode == "blitz":
 		final_summary = ("FINISHED • " if challenge_complete else "TIME CHALLENGE • ")+medal(total)+"\n"+final_summary
 	for enemy in enemies: enemy.hide()
@@ -765,13 +833,18 @@ func finish_run() -> void:
 
 func show_results() -> void:
 	state = "results"
-	clear_cards("BLITZ RESULTS" if mode == "blitz" else "RUN COMPLETE",final_summary+"\n"+next_skin_hint()+"\nWALLET %d" % coins)
+	clear_cards("CAMPAIGN RESULTS" if mode == "campaign" else "BLITZ RESULTS" if mode == "blitz" else "RUN COMPLETE",final_summary+"\n"+next_skin_hint()+"\nWALLET %d" % coins)
 	cards.add_theme_constant_override("separation",12)
 	if run_coins > 0:
 		add_button("CLAIM X2 GOLD • +%d" % run_coins if not double_claimed else "X2 CLAIMED • +%d" % run_coins,claim_double_gold)
 		(cards.get_child(cards.get_child_count()-1) as Button).disabled = double_claimed
-	add_button("RETRY",start_run.bind(mode,arena_layout))
-	add_button("SKINS",show_skins)
+	if mode == "campaign":
+		if campaign_won and active_stage < 4: add_button("NEXT STAGE",start_campaign.bind(active_stage+1))
+		add_button("RETRY STAGE",start_campaign.bind(active_stage))
+		add_button("STAGE SELECT",show_campaign)
+	else:
+		add_button("RETRY",start_run.bind(mode,arena_layout))
+	add_button("SUMMON",show_summon)
 	add_button("MAIN MENU",show_menu)
 
 func deflect_rate() -> int:
@@ -811,6 +884,7 @@ func update_hud() -> void:
 	var clock := time_text() if mode != "blitz" else "%02d:%02d" % [int(maxf(0,90-elapsed))/60,int(maxf(0,90-elapsed))%60]
 	hud.text = "HP %d/5    %s    %s %d\nSCORE %d  •  KILL ×%d" % [hp,clock,"WAVE" if mode != "blitz" else "BLITZ",wave,score+int(elapsed),combo]
 	perfect_label.text = "PERFECT ×%d  •  LV %d" % [perfect_chain,level]
+	if mode == "campaign": perfect_label.text += "  •  S%d R%d" % [active_stage+1,campaign_room]
 	xp_bar.max_value = xp_required()
 	xp_bar.value = xp
 	mission_label.text = "MISSIONS  Kills %d/15  •  Perfect %d/3  •  Chain %d/10" % [mini(kills,15),mini(perfect_count,3),mini(best_combo,10)]
@@ -822,11 +896,11 @@ func _process(delta: float) -> void:
 
 func _draw() -> void:
 	draw_texture_rect(NeonArt.FLOOR,Balance.ARENA,false)
-	if state in ["menu","results","admin"]:
+	if state in ["menu","results","admin","summon","summon_results"]:
 		draw_rect(Rect2(0,0,720,1280),Color(0.01,0.02,0.05,0.3))
 		return
-	if arena_layout == "reflector":
-		var pillar := Geometry.PILLAR
+	if mode == "campaign": Campaign.draw_arena(self,Balance.ARENA,active_stage,elapsed)
+	for pillar in world_obstacles():
 		draw_texture_rect(NeonArt.texture(7),Rect2(pillar.position-Vector2(4,6),pillar.size+Vector2(8,12)),false)
 	for point in pickups:
 		if not low_effects: NeonArt.glow(self,point,4,Color("ffc777"))
@@ -921,9 +995,10 @@ func check_missions() -> void:
 			mission_claimed[i] = true
 			coins += 15
 			mission_coins += 15
+			grant_tickets(1)
 			save_profile()
 			audio.play_event("level_up")
-			notice("MISSION COMPLETE • +15 COINS")
+			notice("MISSION • +15 COINS +1 TICKET")
 
 func load_profile() -> void:
 	var config := ConfigFile.new()
@@ -950,6 +1025,17 @@ func load_profile() -> void:
 		if not owned_robots.has(selected_robot): selected_robot = 0
 		sound_on = bool(config.get_value("settings","sound",true))
 		haptics_on = bool(config.get_value("settings","haptics",true))
+	summon.read(config)
+	campaign_unlocked = clampi(int(config.get_value("campaign","unlocked",1)),1,5)
+	campaign_cleared.clear()
+	var cleared: Variant = config.get_value("campaign","cleared",[])
+	if cleared is Array:
+		for id in cleared:
+			if id is int and id in range(5) and not campaign_cleared.has(id): campaign_cleared.append(id)
+	campaign_stars = [0,0,0,0,0]
+	var saved_stars: Variant = config.get_value("campaign","stars",[])
+	if saved_stars is Array:
+		for i in range(mini(5,saved_stars.size())): campaign_stars[i] = clampi(int(saved_stars[i]),0,3)
 	if admin_enabled:
 		owned_skins = [0,1,2,3]
 		owned_robots = [0,1,2,3,4,5,6]
@@ -976,6 +1062,10 @@ func save_profile() -> void:
 		config.set_value("admin","god",admin_god)
 		config.set_value("admin","max_start",admin_max_start)
 		config.set_value("admin","free_deflect",admin_free_deflect)
+	summon.write(config)
+	config.set_value("campaign","unlocked",campaign_unlocked)
+	config.set_value("campaign","cleared",campaign_cleared)
+	config.set_value("campaign","stars",campaign_stars)
 	config.save(save_path)
 
 func show_skins() -> void:
@@ -1009,6 +1099,7 @@ func buy_or_equip(index: int) -> void:
 
 func show_settings() -> void:
 	clear_cards("SETTINGS","Audio plays locally. No online services.")
+	add_button("HOW TO PLAY",show_help)
 	add_button("SOUND: " + ("ON" if sound_on else "OFF"),func(): sound_on = not sound_on; audio.enabled = sound_on; audio.stop_all(); save_profile(); show_settings())
 	add_button("LOW EFFECTS: "+("ON" if low_effects else "OFF"),func(): low_effects = not low_effects; save_profile(); show_settings())
 	add_button("VIBRATION: " + ("ON" if haptics_on else "OFF"),func(): haptics_on = not haptics_on; save_profile(); show_settings())
@@ -1062,6 +1153,8 @@ func show_admin() -> void:
 		if not admin_context:
 			add_button("ALL SKINS • FREE",show_skins)
 			add_button("ALL ROBOTS • FREE",show_robots)
+			add_button("CAMPAIGN • ALL STAGES",show_campaign)
+			add_button("SUMMON • FREE",show_summon)
 			add_button("RETURN TO NORMAL MODE",switch_admin.bind(false))
 	add_button("RESUME GAME" if admin_context else "BACK TO MENU",close_admin)
 
@@ -1170,16 +1263,16 @@ func layout_viewport(size: Vector2, safe := Vector2.ZERO) -> void:
 	if is_instance_valid(bullet) and old_arena != Balance.ARENA:
 		var normalized := (player-old_arena.position)/old_arena.size
 		player = Balance.ARENA.position+normalized*Balance.ARENA.size
-		if arena_layout == "reflector": player = Geometry.resolve(player,18)
+		player = Geometry.resolve_all(player,18,world_obstacles())
 		player_actor.position = player
 		player_actor.reset_physics_interpolation()
 		bullet.position = bullet.position.clamp(Balance.ARENA.position+Vector2(8,8),Balance.ARENA.end-Vector2(8,8))
-		if arena_layout == "reflector": bullet.position = Geometry.resolve(bullet.position,7)
+		bullet.position = Geometry.resolve_all(bullet.position,7,world_obstacles())
 		bullet.trail.clear()
 		bullet.reset_physics_interpolation()
 		for enemy in enemies:
 			enemy.position = enemy.position.clamp(Balance.ARENA.position+Vector2.ONE*enemy.radius,Balance.ARENA.end-Vector2.ONE*enemy.radius)
-			if arena_layout == "reflector": enemy.position = Geometry.resolve(enemy.position,enemy.radius)
+			enemy.position = Geometry.resolve_all(enemy.position,enemy.radius,world_obstacles())
 			enemy.reset_physics_interpolation()
 	header_panel.position.y = 16+safe.x
 	hud.position.y = 52+safe.x
@@ -1208,7 +1301,7 @@ func show_robots(index := -1) -> void:
 	show_menu()
 	robot_gallery_index = selected_robot if index < 0 else clampi(index,0,RobotRoster.NAMES.size()-1)
 	var id := robot_gallery_index
-	clear_cards("ROBOT HANGAR","ADMIN • ALL ROBOTS FREE" if admin_enabled else "Choose your pilot • %d coins\nCosmetic only: same HP, speed and hitbox." % coins)
+	clear_cards("ROBOT HANGAR","ADMIN • ALL ROBOTS FREE" if admin_enabled else "Choose your pilot • %d shards\nCosmetic only. Summon or exchange for new pilots." % summon.shards)
 	cards.add_theme_constant_override("separation",14)
 	var portrait := Preview.new()
 	portrait.actor = id
@@ -1216,7 +1309,8 @@ func show_robots(index := -1) -> void:
 	portrait.custom_minimum_size = Vector2(560,210)
 	cards.add_child(portrait)
 	var name_label := Label.new()
-	name_label.text = RobotRoster.NAMES[id]+"\n"+RobotRoster.NOTES[id]
+	var rarity := "STARTER" if id == 0 else "RARE" if id in [1,5,6] else "EPIC" if id in [2,3] else "LEGENDARY"
+	name_label.text = RobotRoster.NAMES[id]+" • "+rarity+"\n"+RobotRoster.NOTES[id]
 	name_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	name_label.add_theme_font_size_override("font_size",26)
 	name_label.add_theme_color_override("font_color",RobotRoster.COLORS[id])
@@ -1231,19 +1325,149 @@ func show_robots(index := -1) -> void:
 		navigation.add_child(button)
 		button.custom_minimum_size = Vector2(270,88)
 		button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	var action := "EQUIPPED" if selected_robot == id else "EQUIP" if owned_robots.has(id) else "UNLOCK • %d COINS" % RobotRoster.COSTS[id]
+	var action := "EQUIPPED" if selected_robot == id else "EQUIP" if owned_robots.has(id) else "EXCHANGE • %d SHARDS" % Summons.EXCHANGE_COSTS[id]
 	var equip := add_button(action,buy_or_equip_robot.bind(id))
-	equip.disabled = selected_robot == id or (not owned_robots.has(id) and coins < RobotRoster.COSTS[id])
+	equip.disabled = selected_robot == id or (not owned_robots.has(id) and summon.shards < Summons.EXCHANGE_COSTS[id])
 	add_button("BACK TO MENU",show_menu)
 
 func buy_or_equip_robot(index: int) -> void:
 	if index < 0 or index >= RobotRoster.NAMES.size(): return
-	if not owned_robots.has(index):
-		if not admin_enabled:
-			if coins < RobotRoster.COSTS[index]: return
-			coins -= RobotRoster.COSTS[index]
-		owned_robots.append(index)
+	if not owned_robots.has(index) and not summon.exchange(index,owned_robots,admin_enabled): return
 	selected_robot = index
 	player_actor.robot = selected_robot
 	save_profile()
 	show_robots(index)
+
+func world_obstacles() -> Array[Rect2]:
+	if obstacle_cache_mode != mode or obstacle_cache_layout != arena_layout or obstacle_cache_stage != active_stage or obstacle_cache_arena != Balance.ARENA or obstacle_cache_pillar != Geometry.PILLAR:
+		obstacle_cache_mode = mode
+		obstacle_cache_layout = arena_layout
+		obstacle_cache_stage = active_stage
+		obstacle_cache_arena = Balance.ARENA
+		obstacle_cache_pillar = Geometry.PILLAR
+		obstacle_cache = []
+		if mode == "campaign": obstacle_cache = Campaign.obstacles(Balance.ARENA,active_stage)
+		elif arena_layout == "reflector": obstacle_cache.append(Geometry.PILLAR)
+	return obstacle_cache
+
+func show_campaign() -> void:
+	show_menu()
+	clear_cards("CAMPAIGN","Five stages • 3 combat waves + boss each.\nUpgrades carry within a stage. First clear: 3 tickets; replay: 1.")
+	cards.add_theme_constant_override("separation",12)
+	for i in range(5):
+		var unlocked := admin_enabled or i < campaign_unlocked
+		var label := "%02d • %s" % [i+1,Campaign.data(i).name]
+		label += "  "+"★".repeat(campaign_stars[i]) if unlocked else " • LOCKED"
+		var button := add_button(label,show_stage_brief.bind(i))
+		button.add_theme_font_size_override("font_size",24)
+		button.disabled = not unlocked
+	add_button("BACK",show_modes)
+
+func start_campaign(stage: int) -> void:
+	if stage < 0 or stage >= 5 or (not admin_enabled and stage >= campaign_unlocked): return
+	active_stage = stage
+	start_run("campaign","campaign")
+	notice("STAGE %d • %s" % [stage+1,Campaign.data(stage).name])
+
+func advance_campaign() -> bool:
+	var data: Dictionary = Campaign.data(active_stage)
+	var next_room := mini(3,1+int(elapsed/(float(data.at)/3)))
+	if next_room > campaign_room and not boss_spawned:
+		campaign_room = next_room
+		level += 1
+		show_upgrades()
+		notice("WAVE %d/3 • %s" % [campaign_room,data.name])
+		return state != "playing"
+	if elapsed >= float(data.at) and not boss_spawned:
+		# Clear remaining normal mobs to make the boss pattern readable.
+		for enemy in enemies:
+			remove_child(enemy)
+			enemy.queue_free()
+		enemies.clear()
+		boss = null
+		spawn_enemy(3)
+		boss_spawned = is_instance_valid(boss)
+		notice("BOSS • %s" % data.boss)
+		audio.play_event("boss_warning")
+	return false
+
+func grant_tickets(amount: int) -> void:
+	if amount <= 0: return
+	summon.tickets += amount
+	run_tickets += amount
+	save_profile()
+
+func show_summon() -> void:
+	show_menu()
+	clear_cards("ROBOT SUMMON","%s • SHARDS %d\nBase: Rare 75%% / Epic 20%% / Legendary 5%%\nEpic+ pity %d/10 • Legendary pity %d/50\n1 ticket per pull. Every pull gives a robot.\nDuplicates → 5 / 15 / 50 shards." % ["ADMIN • FREE PULLS" if admin_enabled else "TICKETS %d" % summon.tickets,summon.shards,summon.epic_pity,summon.legendary_pity])
+	cards.add_theme_constant_override("separation",14)
+	var one := add_button("SUMMON ×1"+(" • FREE" if admin_enabled else " • 1 TICKET"),begin_summon.bind(1))
+	one.disabled = not admin_enabled and summon.tickets < 1
+	var ten := add_button("SUMMON ×10"+(" • FREE" if admin_enabled else " • 10 TICKETS"),begin_summon.bind(10))
+	ten.disabled = not admin_enabled and summon.tickets < 10
+	add_button("RATES & GUARANTEES",show_summon_rules)
+	if not summon.last_results.is_empty(): add_button("LAST RESULTS",show_summon_results)
+	add_button("EXCHANGE SHARDS / ROBOTS",show_robots)
+	add_button("BACK",show_menu)
+
+func begin_summon(count: int) -> void:
+	if state != "menu": return
+	state = "summon"
+	summon_results = summon.pull(count,owned_robots,admin_enabled)
+	if summon_results.is_empty():
+		show_summon()
+		return
+	# The complete cost, pity, inventory and receipt are committed together before
+	# the reveal. Reopening/skip reads this receipt; it never performs another pull.
+	save_profile()
+	summon_revealed = false
+	var best: Dictionary = summon_results[0]
+	for result in summon_results:
+		if result.tier > best.tier: best = result
+	clear_cards("SUMMONING…","Opening the robot chamber. Skip changes only the animation.")
+	summon_reveal = Reveal.new()
+	summon_reveal.robot = int(best.robot)
+	summon_reveal.tier = int(best.tier)
+	summon_reveal.custom_minimum_size = Vector2(560,250)
+	summon_reveal.finished.connect(show_summon_results)
+	cards.add_child(summon_reveal)
+	add_button("SKIP ANIMATION",summon_reveal.skip)
+	audio.play_event("level_up")
+
+func show_summon_results() -> void:
+	if summon.last_results.is_empty():
+		show_summon()
+		return
+	state = "summon_results"
+	summon_revealed = true
+	clear_cards("SUMMON RESULTS","Saved to your collection • %d tickets • %d shards" % [summon.tickets,summon.shards])
+	cards.add_theme_constant_override("separation",12)
+	var featured: Dictionary = summon.last_results[0]
+	for result in summon.last_results:
+		if result.tier > featured.tier: featured = result
+	var portrait := Preview.new()
+	portrait.actor = int(featured.robot)
+	portrait.actor_width = 170
+	portrait.custom_minimum_size = Vector2(560,180)
+	cards.add_child(portrait)
+	for result in summon.last_results:
+		var label := Label.new()
+		var status := "DUPLICATE • +%d SHARDS" % int(result.get("shards",0)) if bool(result.get("duplicate",false)) else "NEW ROBOT"
+		label.text = "%s • %s\n%s" % [Summons.TIERS[int(result.tier)],RobotRoster.NAMES[int(result.robot)],status]
+		label.add_theme_font_size_override("font_size",24)
+		label.add_theme_color_override("font_color",Summons.COLORS[int(result.tier)])
+		cards.add_child(label)
+	add_button("SUMMON AGAIN",show_summon)
+	add_button("ROBOT HANGAR",show_robots)
+	add_button("MAIN MENU",show_menu)
+
+func show_stage_brief(stage: int) -> void:
+	if stage < 0 or stage > 4 or (not admin_enabled and stage >= campaign_unlocked): return
+	var data: Dictionary = Campaign.data(stage)
+	clear_cards("%02d • %s" % [stage+1,data.name],"3 combat waves → %s\nBoss enters at %d seconds.\n\n%s\n\nFirst clear: 3 tickets. Repeat clear: 1 ticket. Upgrades carry across this stage's waves." % [data.boss,int(data.at),data.tip])
+	add_button("START STAGE",start_campaign.bind(stage))
+	add_button("BACK",show_campaign)
+
+func show_summon_rules() -> void:
+	clear_cards("SUMMON RULES","BASE RATES (before pity)\nRare 75%: Volt, Cobalt, Scout (25% each)\nEpic 20%: Frost, Ember (10% each)\nLegendary 5%: Nova\nAegis is your free starter, not in this pool.\n\nGUARANTEES\nAfter 9 Rare pulls, the next pull is Epic or Legendary: a Rare result is promoted to Epic.\nAfter 49 pulls without Legendary, pull 50 is Legendary. Legendary resets both meters; Epic resets only Epic+.\n\nDUPLICATES & EXCHANGE\nRare +5 / Epic +15 / Legendary +50 universal robot shards. Exchange Rare for 30, Epic for 90, Legendary for 300 shards. Owned robots remain owned.\n\nTICKETS\n5 starter tickets, +1 per run mission, +1 at 120 seconds and 30 kills once each per run, +1 for completed Blitz. Campaign first clear +3; replay clear +1. No payments or ads.")
+	add_button("BACK",show_summon)

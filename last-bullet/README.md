@@ -1,7 +1,16 @@
-# LAST BULLET — v0.5.0
+# LAST BULLET — v0.6.0
 ZORVYKA Games • **One Shot. Endless Chaos.**
 
 Godot 4 portrait arcade survival. Exactly one permanent bullet, no external plugins or online runtime services.
+
+## v0.6.0 — 5 màn chiến dịch & summon
+**PLAY → CAMPAIGN** để chơi 5 màn có đợt giao tranh, địa hình, boss riêng, sao và mở khóa màn tiếp. **Menu → SUMMON** để triệu hồi robot bằng vé, có ×1/×10, tỷ lệ công khai, bảo hiểm 10/50, hoạt ảnh/Skip, robot trùng thành mảnh và đổi chọn robot.
+
+**Admin** được vào mọi màn và quay miễn phí. Robot đã sở hữu giữ nguyên. Vàng, vé, mảnh và bảo hiểm tách theo profile. Mở robot mới bằng summon/mảnh từ phiên bản này; giá xu v0.5 bên dưới là thông tin phiên bản cũ.
+
+Xem **[hướng dẫn Campaign & Summon đầy đủ](docs/CAMPAIGN_SUMMON.md)** để biết boss, tỷ lệ, phần thưởng và bảo hiểm. [Màn chiến dịch](docs/previews/v0.6-campaign.png) · [Lõi máy](docs/previews/v0.6-core.png) · [Summon trên màn hình dài](docs/previews/v0.6-summon.png).
+
+HOW TO PLAY hiện nằm trong SETTINGS để menu chính gọn hơn. Survival, Blitz, bộ robot/skin và x2 vàng nhận ngay vẫn có sẵn; không có quảng cáo hoặc thanh toán.
 
 ## v0.5.0 — Admin, mobile layout và 7 robot
 
@@ -20,7 +29,7 @@ Tiến trình thường dùng `user://records.cfg`; admin dùng `user://records-
 ### Robot Hangar
 **Menu → ROBOTS → PREV / NEXT → EQUIP**. Có 6 robot mới bên cạnh Aegis: **Volt, Frost, Ember, Nova, Cobalt, Scout**. Mỗi mẫu có sprite/giáp riêng và cùng hoạt ảnh; tất cả cùng máu, tốc độ và hitbox.
 
-Trong admin tất cả miễn phí. Chơi thường: Aegis miễn phí; Volt 40, Frost 70, Ember 100, Nova 140, Cobalt 180, Scout 220 xu. Mua một lần, equip không trừ thêm xu; lưu robot và quyền sở hữu riêng theo profile. Save cũ bắt đầu với Aegis.
+Trong admin tất cả miễn phí. Giá xu ở v0.5 đã được thay bằng summon/mảnh trong v0.6; robot từng mua vẫn giữ nguyên. Equip không trừ thêm tài nguyên; lưu robot và quyền sở hữu riêng theo profile.
 
 ### Hiển thị điện thoại
 - Cửa sổ desktop mặc định **540×960** thay cho 450×800; **F11** đổi fullscreen khi chạy cửa sổ game riêng.
@@ -92,12 +101,14 @@ Dùng lại 9 mẫu local đã có trong **Game-create**; không tạo thêm m�
 - `scripts/game.gd`: run lifecycle, player/controls, waves, missions, upgrade cards, wallet/skins/settings/save.
 - `scripts/bullet.gd`: persistent projectile, sweep, boost, pierce/bank, skin rendering.
 - `scripts/enemy.gd`: enemy behaviors, shield direction, telegraphed zones and boss.
-- `scripts/arena_geometry.gd`: reflector sweep, separation and four-corner navigation.
+- `scripts/arena_geometry.gd`: multi-obstacle sweep, separation and cached visibility-graph navigation.
+- `scripts/campaign_data.gd`: all stage tuning, hazards, magnetic steering and environment drawing.
+- `scripts/summon_system.gd`, `scripts/summon_reveal.gd`: ticket/pity/shard domain rules and visual reveal.
 - `art/neon/`: illustrated art, atlas region helper, import settings and provenance.
 - `scripts/player_visual.gd`, `scripts/skin_preview.gd`, `scripts/visual_effects.gd`: cosmetic animation and capped feedback rendering.
 - `scripts/audio.gd`: bounded local audio pool, limiter and generated wall ping.
 - `scripts/balance.gd`: primary tuning constants, caps, names, skin colors/prices. Enemy stats are in `enemy.gd`; wave/XP/mission values in `game.gd`.
-- `tests/smoke.gd`, `tests/features.gd`, `tests/expansion.gd`, `tests/reflector_stress.gd`, `tests/graphics.gd`, `tests/admin_mobile.gd`, `tests/robots.gd`: isolated test saves, cleaned up on success.
+- `tests/smoke.gd`, `tests/features.gd`, `tests/expansion.gd`, `tests/reflector_stress.gd`, `tests/graphics.gd`, `tests/admin_mobile.gd`, `tests/robots.gd`, `tests/summon.gd`, `tests/campaign.gd`: isolated test saves, cleaned up on success.
 - `docs/TEST_RESULTS.md`: validation evidence and remaining device checks.
 
 ## Validation commands
@@ -110,6 +121,8 @@ godot --headless --path last-bullet --script res://tests/reflector_stress.gd
 godot --headless --path last-bullet --script res://tests/graphics.gd
 godot --headless --path last-bullet --script res://tests/admin_mobile.gd
 godot --headless --path last-bullet --script res://tests/robots.gd
+godot --headless --path last-bullet --script res://tests/summon.gd
+godot --headless --path last-bullet --script res://tests/campaign.gd
 ```
 Tested on **Godot 4.6.3.stable.official.7d41c59c4**, Linux. Tests do not alter `records.cfg`.
 

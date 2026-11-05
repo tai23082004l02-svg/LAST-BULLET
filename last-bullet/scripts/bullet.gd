@@ -53,6 +53,8 @@ func advance(delta: float, game: Node2D) -> void:
 		if target != null:
 			var angle := velocity.angle_to(target.position - position)
 			velocity = velocity.rotated(clampf(angle, -delta * (0.45 + game.upgrades[2] * 0.25), delta * (0.45 + game.upgrades[2] * 0.25)))
+	if game.mode == "campaign":
+		velocity = CampaignData.steer(position,velocity,delta,Balance.ARENA,game.active_stage,is_instance_valid(game.boss) and game.boss.hp < game.boss.max_hp*0.5)
 	velocity = velocity.normalized() * speed
 	var remaining := delta
 	for bounce_index in range(10):
@@ -72,8 +74,8 @@ func advance(delta: float, game: Node2D) -> void:
 				fraction = t
 				normal = Vector2.ZERO
 				normal[axis] = -signf(motion[axis])
-		if game.arena_layout == "reflector":
-			var obstacle: Dictionary = ArenaGeometry.sweep_rect(position,motion,ArenaGeometry.PILLAR.grow(7))
+		for box in game.world_obstacles():
+			var obstacle: Dictionary = ArenaGeometry.sweep_rect(position,motion,box.grow(7))
 			if not obstacle.is_empty() and obstacle.fraction <= fraction:
 				fraction = obstacle.fraction
 				normal = obstacle.normal
@@ -107,7 +109,7 @@ func advance(delta: float, game: Node2D) -> void:
 		if target != null:
 			hit_cooldowns[target.get_instance_id()] = Balance.HIT_COOLDOWN
 			idle = 0
-			if target.kind == 3 and target.capture_ready <= 0 and target.weak_timer <= 0:
+			if target.kind == 3 and target.boss_style in [-1,4] and target.capture_ready <= 0 and target.weak_timer <= 0:
 				capture = 1.1
 				trail.clear()
 				queue_redraw()
@@ -115,7 +117,7 @@ func advance(delta: float, game: Node2D) -> void:
 				game.notice("BULLET EATER • RELEASE INCOMING")
 				game.audio.play_event("boss_warning")
 				return
-			var blocked: bool = target.kind == 4 and target.blocks(velocity)
+			var blocked: bool = target.blocks(velocity)
 			game.damage_enemy(target, 1 + game.upgrades[0] + ((2 if perfect_boost else 1) if boost > 0 else 0) + bank_charge, true, velocity)
 			bank_charge = 0
 			if pierce_left > 0 and not blocked:
@@ -128,8 +130,7 @@ func advance(delta: float, game: Node2D) -> void:
 			game.effects.burst(position,Balance.SKIN_COLORS[skin],"hit",normal)
 		velocity = velocity.bounce(normal)
 		position += normal * 1.5
-	if game.arena_layout == "reflector":
-		position = ArenaGeometry.resolve(position,7)
+	position = ArenaGeometry.resolve_all(position,7,game.world_obstacles())
 	position = position.clamp(Balance.ARENA.position + Vector2(8,8), Balance.ARENA.end - Vector2(8,8))
 	check_time += delta
 	travel += velocity.length() * delta

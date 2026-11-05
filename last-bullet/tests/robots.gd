@@ -20,10 +20,11 @@ func run() -> void:
 	game.coins = 100
 	game.buy_or_equip_robot(6)
 	assert(game.coins == 100 and game.selected_robot == 0)
+	game.summon.shards = 30
 	game.buy_or_equip_robot(1)
-	assert(game.coins == 60 and game.selected_robot == 1)
+	assert(game.coins == 100 and game.summon.shards == 0 and game.selected_robot == 1)
 	game.buy_or_equip_robot(1)
-	assert(game.coins == 60)
+	assert(game.coins == 100)
 	game.selected_robot = 0
 	game.load_profile()
 	assert(game.selected_robot == 1 and game.owned_robots.has(1))
@@ -46,7 +47,7 @@ func run() -> void:
 		game.show_menu()
 	game.show_admin()
 	game.switch_admin(false)
-	assert(game.selected_robot == 1 and game.owned_robots.size() == 2 and game.coins == 60)
+	assert(game.selected_robot == 1 and game.owned_robots.size() == 2 and game.coins == 100)
 	print("PASS: seven robot roster, atlas, funds check, single-charge purchase, save/equip, admin free access, profile isolation and unchanged HP/single bullet")
 	cleanup()
 	game.audio.shutdown()
