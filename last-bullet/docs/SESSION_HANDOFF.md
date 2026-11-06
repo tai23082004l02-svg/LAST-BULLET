@@ -1,3 +1,11 @@
+# CURRENT — v1.1.2 PROJECTILE VISUALS (2026-11-06)
+
+User asked for projectile designs and effects after illustrated weapon/pet patch. Implemented shared projectile_art.gd (procedural deterministic drawing): all12 distinct projectiles, layered tracers/glow, muzzle flashes, per-style enemy/wall impacts, same renderer in arsenal animated preview. Combat routes muzzle/impact through existing bounded32 flash list. Pause freezes effects, reset clears; low_effects reduces layers/sparks. Hostile bullets retain distinct orange readability. No simulation/economy/save/control changes and no gameplay RNG consumption in drawing. Source project.godot engine/version metadata intentionally untouched for this art-only patch.
+
+Eight relevant suites pass (projectile_fx plus arsenal/arsenal_stress/shooting/shooter_stress/graphics/polish/pets_practice). Visual gallery renders all12 projectiles/muzzles/impacts in full/reduced modes without renderer errors, and arsenal capture reviewed. See PROJECTILE_FX.md, TEST_RESULTS.md and previews/v1.1.2-*.png. Phone FPS remains unverified. Preserve all prior profiles and ownership.
+
+--- Previous context ---
+
 # CURRENT — v1.1.1 ILLUSTRATED PETS / WEAPONS (2026-11-06)
 
 User specifically requested genuinely richer art for the six pets and twelve weapons shown in their screenshots. Replaced their geometric icons with original generated painted transparent sprites: art/arsenal/pets.png (3×2), weapons.png (4×4, only first 12 cells used). Runtime import settings tracked; do not track .godot. item_art.gd decodes each atlas once and lazily fits each cell into a mipmapped 256px cached texture; previews, collection and combat pets share these assets. Vector fallback remains for other groups. Keep unique ID order, ownership and existing gameplay/profile data. Locked pets remain dimmed but visible, with lock icons.

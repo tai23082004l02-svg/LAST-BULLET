@@ -11,6 +11,10 @@ func _draw() -> void:
 	var color: Color = Combat.COLORS[weapon]
 	draw_arc(center,65,0,TAU,48,Color(color,0.15),2)
 	preload("res://scripts/item_art.gd").draw(self,"weapon",weapon,center,230)
+	var muzzle := center+Vector2(98,0)
+	var phase := fmod(clock,1.2)
+	if phase < 0.12: Combat.ProjectileArt.flash(self,"muzzle",weapon,muzzle,Vector2.RIGHT,phase/0.12)
 	for i in range(3):
-		var travel := fmod(clock*100+i*38,130)
-		Combat.draw_round(self,weapon,center+Vector2(115+travel,sin(clock*2+i)*8),Vector2.RIGHT,0,clock+i)
+		var travel := fmod(clock*130+i*46,150)
+		Combat.draw_round(self,weapon,muzzle+Vector2(14+travel,sin(clock*2+i)*4),Vector2.RIGHT,0,clock+i)
+	if phase > 0.85: Combat.ProjectileArt.flash(self,"impact",weapon,muzzle+Vector2(174,0),Vector2.RIGHT,(phase-0.85)/0.35)

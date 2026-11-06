@@ -1,5 +1,6 @@
 extends Node2D
 # A bounded projectile simulation. Shots expire; no permanent or reflected player bullet.
+const ProjectileArt = preload("res://scripts/projectile_art.gd")
 const MAX_SHOTS := 160
 const MAX_HOSTILE := 180
 const WEAPONS := ["SÚNG TRƯỜNG","SÚNG ĐIỆN","SÚNG BĂNG","PHUN LỬA","LASER","SHOTGUN","SÚNG TRINH SÁT","TÊN LỬA","CUNG XUYÊN","BOOMERANG","PHÓNG LỰU","SÚNG ĐỘC"]
@@ -97,7 +98,7 @@ func fire() -> void:
 	if game.upgrades[8] > 0:
 		for angle in [-0.55,0.55]: emit_shot(game.player,direction.rotated(angle),damage()*0.7,game.upgrades[5],game.upgrades[6],RANGES[robot],SPEEDS[robot],robot)
 	if game.upgrades[9] > 0: emit_shot(game.player,-direction,damage()*0.8,game.upgrades[5],game.upgrades[6],RANGES[robot],SPEEDS[robot],robot)
-	add_flash({"p":game.player+direction*26,"ttl":0.08,"r":13.0,"color":COLORS[robot]})
+	add_flash({"p":game.player+direction*26,"ttl":0.08,"r":13.0,"color":COLORS[robot],"kind":"muzzle","style":robot,"dir":direction})
 	game.audio.play_event("shoot",1.2 if robot == 1 else 0.9 if robot == 5 else 1.0)
 
 func skill() -> void:
@@ -206,6 +207,7 @@ func advance_shots(delta: float) -> void:
 			if shock:
 				enemy.thermal_lock = 1.5
 				thermal_procs += 1
+			add_flash({"p":shot.p,"ttl":0.24,"r":22.0,"color":COLORS[shot.style],"kind":"impact","style":shot.style,"dir":shot.v.normalized()})
 			game.damage_enemy(enemy,shot.damage*(1.8 if critical else 1),true,shot.v)
 			if game.state != "playing": return
 			if shock:
@@ -245,7 +247,9 @@ func advance_shots(delta: float) -> void:
 			wall = 1.0
 		var expired: bool = consumed or (wall < 1 and not chained) or shot.ttl <= 0 or not Balance.ARENA.grow(10).has_point(shot.p)
 		if expired:
-			if wall < 1 and not chained: shot.p += wall_normal*2
+			if wall < 1 and not chained:
+				shot.p += wall_normal*2
+				add_flash({"p":shot.p,"ttl":0.24,"r":22.0,"color":COLORS[shot.style],"kind":"impact","style":shot.style,"dir":shot.v.normalized()})
 			if shot.style in [7,10] and not shot.blast:
 				area_damage(shot.p,100 if shot.style == 10 else 65,shot.damage*(0.8+game.upgrades[13]*0.18))
 			shots.erase(shot)
@@ -357,7 +361,7 @@ func advance(delta: float) -> void:
 func _draw() -> void:
 	if game == null or game.state not in ["playing","paused","upgrade"]: return
 	for shot in shots:
-		draw_round(self,shot.style,shot.p,shot.v.normalized(),shot.skin,shot.age)
+		draw_round(self,shot.style,shot.p,shot.v.normalized(),shot.skin,shot.age,game.low_effects)
 	for i in range(game.upgrades[14]):
 		var point: Vector2 = game.player+Vector2.from_angle(orbit_clock*1.5+i*PI)*45
 		draw_circle(point,10,Color("143743"))
@@ -371,6 +375,9 @@ func _draw() -> void:
 		draw_circle(shot.p,7,Color("ff684a"))
 		draw_arc(shot.p,8,0,TAU,12,Color("ffe0a3"),2)
 	for flash in flashes:
+		if flash.get("kind","") in ["muzzle","impact"]:
+			ProjectileArt.flash(self,flash.kind,flash.style,flash.p,flash.dir,1-float(flash.ttl)/(0.08 if flash.kind == "muzzle" else 0.24),game.low_effects)
+			continue
 		var alpha: float = minf(0.7,flash.ttl*2)
 		draw_arc(flash.p,flash.r*(1-flash.ttl*0.4),0,TAU,32,Color(flash.color,alpha),3)
 		if flash.get("kind","") == "skill" and not game.low_effects:
@@ -390,34 +397,5 @@ func _draw() -> void:
 	if shield > 0 and shield_hits > 0:
 		draw_arc(game.player,38,0,TAU,32,Color("8bffe1"),3)
 
-static func draw_round(canvas: CanvasItem, style: int, point: Vector2, direction: Vector2, skin := 0, clock := 0.0) -> void:
-	var color: Color = COLORS[style] if style in [2,3,4,7,8,9,10,11] else Balance.SKIN_COLORS[skin]
-	if style == 9:
-		canvas.draw_arc(point,11,clock*12,clock*12+PI*1.6,16,color,4)
-		canvas.draw_circle(point,3,Color.WHITE)
-	elif style == 10:
-		canvas.draw_circle(point,9,Color("63452a"))
-		canvas.draw_arc(point,9,0,TAU,16,color,3)
-		canvas.draw_circle(point+Vector2(2,-6),3,Color.WHITE)
-	elif style == 8:
-		canvas.draw_line(point-direction*28,point+direction*6,color,3)
-		canvas.draw_line(point+direction*6,point-direction.rotated(0.6)*6,color,3)
-		canvas.draw_line(point+direction*6,point-direction.rotated(-0.6)*6,color,3)
-	elif style == 11:
-		canvas.draw_circle(point,9,Color(color,0.22))
-		canvas.draw_circle(point,5,color)
-		canvas.draw_circle(point-Vector2(1,1),2,Color.WHITE)
-	else:
-		if style == 2:
-			for i in range(3):
-				var arm := Vector2.from_angle(i*PI/3)
-				canvas.draw_line(point-arm*8,point+arm*8,Color(color,0.8),2)
-		elif style == 3:
-			canvas.draw_colored_polygon(PackedVector2Array([point+direction*9,point-direction*22+direction.orthogonal()*9,point-direction*14,point-direction*22-direction.orthogonal()*9]),Color(color,0.7))
-		elif style == 1:
-			canvas.draw_polyline(PackedVector2Array([point-direction*24,point-direction*13+direction.orthogonal()*4,point]),Color(color,0.8),2)
-		var tail := point-direction*(78 if style == 4 else 22 if style == 3 else 13)
-		canvas.draw_line(tail,point,Color(color,0.28),10 if style in [3,4] else 6)
-		canvas.draw_line(tail,point,color,4 if style in [3,4] else 2)
-		canvas.draw_circle(point,4,Color("ecffff"))
-		if style == 7: canvas.draw_colored_polygon(PackedVector2Array([point+direction*9,point-direction.rotated(0.6)*10,point-direction.rotated(-0.6)*10]),color)
+static func draw_round(canvas: CanvasItem, style: int, point: Vector2, direction: Vector2, skin := 0, clock := 0.0, reduced := false) -> void:
+	ProjectileArt.projectile(canvas,style,point,direction,skin,clock,reduced)

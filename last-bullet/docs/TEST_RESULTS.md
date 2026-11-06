@@ -1,3 +1,9 @@
+# v1.1.2 projectile FX validation — 2026-11-06
+
+Eight suites pass: projectile_fx, arsenal, arsenal_stress, shooting, shooter_stress, graphics, polish, pets_practice. Stress suites rerun after muzzle polygon fix with no renderer errors. New projectile_fx checks all12 actual muzzle/impact styles and pause/cap/reset. Both full/reduced gallery renders and arsenal preview inspected. Existing full-suite counts below are historical, not freshly rerun. No phone FPS or APK claim.
+
+--- Previous validation ---
+
 # v1.1.1 illustrated art validation — 2026-11-06
 
 Seven suites rerun and pass: illustrated_art, polish, graphics, pets_practice, rpg_inventory, lobby, arsenal. Editor import clean. New atlas suite validates all18 distinct sprites, transparent corners, fitted aspect-preserving bounds, mipmaps and stable caches. Rendered VI/EN weapons and VI pets at360×800; source atlases inspected and runtime captures reviewed. No fresh full-suite or physical-device FPS claim; preceding v1.1.0 results remain historical.
