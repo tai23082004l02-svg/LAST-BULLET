@@ -1,9 +1,15 @@
 extends RefCounted
-# Original vector assets, rasterized once per variant and shared by previews/world art.
+# Shared illustrated weapon/pet sprites and vector equipment/support art.
+static var sheets: Dictionary = {}
 static var cache: Dictionary = {}
 static func texture(group: String, index: int) -> Texture2D:
 	var key := group+str(index)
 	if cache.has(key): return cache[key]
+	if group in ["weapon","pet"] and index >= 0 and index < (12 if group == "weapon" else 6):
+		var illustrated := illustrated_texture(group,index)
+		if illustrated != null:
+			cache[key] = illustrated
+			return illustrated
 	var colors := ["83ead6","ffd278","9adfff","ffa56b","caa0ff","8ebdff"]
 	var accent: String = colors[posmod(index,6)]
 	if group == "gear": accent = ["9adfff","83ead6","ffa56b"][index/4]
@@ -65,3 +71,27 @@ static func texture(group: String, index: int) -> Texture2D:
 static func draw(canvas: CanvasItem, group: String, index: int, center: Vector2, width: float, tint := Color.WHITE) -> void:
 	var asset := texture(group,index)
 	if asset != null: canvas.draw_texture_rect(asset,Rect2(center-Vector2.ONE*width*0.5,Vector2.ONE*width),false,tint)
+
+# Decode each atlas once, fit its cell into a shared 256px texture and cache it.
+# Keep square texture API so previews/collection/world pets use identical assets.
+static func illustrated_texture(group: String, index: int) -> Texture2D:
+	if not sheets.has(group):
+		var source: Texture2D = load("res://art/arsenal/"+("pets" if group == "pet" else "weapons")+".png")
+		if source == null: return null
+		sheets[group] = source.get_image()
+	var sheet: Image = sheets[group]
+	var columns := 3 if group == "pet" else 4
+	var rows := 2 if group == "pet" else 4
+	var start := Vector2i(index%columns*sheet.get_width()/columns,index/columns*sheet.get_height()/rows)
+	var end := Vector2i((index%columns+1)*sheet.get_width()/columns,(index/columns+1)*sheet.get_height()/rows)
+	var cell := sheet.get_region(Rect2i(start,end-start))
+	var bounds := cell.get_used_rect()
+	if bounds.size.x <= 0 or bounds.size.y <= 0: return null
+	var sprite := cell.get_region(bounds)
+	var scale := 232.0/maxf(sprite.get_width(),sprite.get_height())
+	sprite.resize(maxi(1,roundi(sprite.get_width()*scale)),maxi(1,roundi(sprite.get_height()*scale)),Image.INTERPOLATE_LANCZOS)
+	var target := Image.create(256,256,false,Image.FORMAT_RGBA8)
+	target.fill(Color.TRANSPARENT)
+	target.blit_rect(sprite,Rect2i(Vector2i.ZERO,sprite.get_size()),(Vector2i(256,256)-sprite.get_size())/2)
+	target.generate_mipmaps()
+	return ImageTexture.create_from_image(target)

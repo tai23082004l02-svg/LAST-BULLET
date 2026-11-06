@@ -1,3 +1,11 @@
+# CURRENT — v1.1.1 ILLUSTRATED PETS / WEAPONS (2026-11-06)
+
+User specifically requested genuinely richer art for the six pets and twelve weapons shown in their screenshots. Replaced their geometric icons with original generated painted transparent sprites: art/arsenal/pets.png (3×2), weapons.png (4×4, only first 12 cells used). Runtime import settings tracked; do not track .godot. item_art.gd decodes each atlas once and lazily fits each cell into a mipmapped 256px cached texture; previews, collection and combat pets share these assets. Vector fallback remains for other groups. Keep unique ID order, ownership and existing gameplay/profile data. Locked pets remain dimmed but visible, with lock icons.
+
+Pet card art area increased and equipped pet preview enlarged. Weapon preview and catalog enlarged, compact three-column navigation retained. No price, drop rate, balance, control, profile or language changes in this art patch. Version 1.1.1. Read ILLUSTRATED_ART.md and TEST_RESULTS.md. Seven relevant suites rerun (illustrated_art plus six regressions); full 18-suite run belongs to v1.1.0 and is not claimed newly rerun. Phone FPS still unverified.
+
+--- Previous completed release ---
+
 # CURRENT HANDOFF — v1.1.0 COMPLETE (2026-11-05)
 
 The authorized visual/UI/bilingual/hero-growth/balance batch is implemented and validated. Read VISUAL_LANGUAGE_HERO.md first, then RPG_SYSTEMS.md for preserved systems. This section supersedes older art/UI/test counts below. 18 current suites including polish; 41 cached vector icons; paged equipment; VI/EN settings with persisted global language; level1–20 hero training, hero cores and safe-room repair kits. See TEST_RESULTS.md for limits. No real-phone performance claim.

@@ -34,7 +34,7 @@ func _draw() -> void:
 			draw_texture_rect(texture,Rect2(center-dimensions*0.5+Vector2(0,sin(clock*2)*2),dimensions),false)
 		else: NeonArt.robot(self,[1,2,3,6,4,5][index],center,width,clock)
 	elif group in ["pet","weapon","gear","skill","item"]:
-		preload("res://scripts/item_art.gd").draw(self,group,index,center,width*1.2,Color.WHITE if owned else Color(0.25,0.29,0.34))
+		preload("res://scripts/item_art.gd").draw(self,group,index,center,width*(1.65 if group in ["pet","weapon"] else 1.2),Color.WHITE if owned else Color(0.48,0.52,0.58))
 	if not owned:
 		var lock := Vector2(size.x-24,size.y-22)
 		draw_arc(lock+Vector2(0,-5),6,PI,TAU,12,Color("93a5b5"),2)

@@ -1,7 +1,10 @@
-# LAST BULLET — v1.1.0
+# LAST BULLET — v1.1.1
 ZORVYKA Games • Auto Fire. Endless Chaos.
 
 Godot 4 portrait robot survival shooter. Open `last-bullet/project.godot` from the repository root (or `project.godot` when already inside this directory). Validated with Godot 4.6.3.
+
+## Hình ảnh pet & vũ khí mới
+6 pet và 12 vũ khí được thay bằng tranh có chất liệu, ánh sáng và thiết kế riêng. Hình lớn hơn trong kho, trang chi tiết và pet trong trận; giữ nguyên tiến trình. Xem [chi tiết hình ảnh](docs/ILLUSTRATED_ART.md).
 
 ## Bản mới: hình ảnh, Việt–Anh và nâng hero
 - Menu dạng lưới, 41 biểu tượng mới cho vũ khí/trang bị/pet/kỹ năng/vật phẩm; hiệu ứng đạn và kỹ năng riêng, số sát thương nổi.

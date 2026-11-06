@@ -22,3 +22,6 @@ Read last-bullet/docs/RPG_SYSTEMS.md and latest SESSION_HANDOFF.md. User authori
 
 ## CURRENT v1.1 visuals/language/growth
 Read last-bullet/docs/VISUAL_LANGUAGE_HERO.md and newest SESSION_HANDOFF. Authorized batch complete: 41 cached original icons, compact/paged mobile menus, immediate persisted VI/EN, level1–20 hero training, core loot and safe-room kits, balanced room pacing and bounded FX. 18 suites. Preserve additive saves and all prior controls/economy. Scheduled three-hour check must not redo finished work or claim it resets usage.
+
+## CURRENT v1.1.1 illustrated weapon/pet patch
+User requested richer actual art after v1.1.0. Read docs/ILLUSTRATED_ART.md and latest SESSION_HANDOFF. Two generated transparent sprite atlases replace geometric weapon/pet icons; preserve exact catalog order, cached texture API and runtime import configs. Seven relevant suites rerun; no gameplay/save/economy changes.

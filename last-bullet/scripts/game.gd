@@ -1780,7 +1780,7 @@ func show_armory(index := -2) -> void:
 	clear_cards("KHO VŨ KHÍ","12 vũ khí • chọn riêng với robot • mở miễn phí")
 	cards.add_theme_constant_override("separation",12)
 	var preview := preload("res://scripts/weapon_preview.gd").new()
-	preview.weapon = id; preview.custom_minimum_size = Vector2(560,150); cards.add_child(preview)
+	preview.weapon = id; preview.custom_minimum_size = Vector2(560,184); cards.add_child(preview)
 	result_label(cards,("THEO ROBOT • " if armory_preview == -1 else "")+Shooter.WEAPONS[id],28,Shooter.COLORS[id])
 	result_label(cards,Shooter.INFO[id],22,Color("abcad6"))
 	result_label(cards,"Mỗi viên %.2f • nhịp %.2fs • tầm %d" % [Shooter.DAMAGES[id],Shooter.INTERVALS[id],Shooter.RANGES[id]],20)
@@ -1791,7 +1791,7 @@ func show_armory(index := -2) -> void:
 		if pair[0] == "ĐANG TRANG BỊ": action.disabled = true
 	var grid := GridContainer.new(); grid.columns = 3; grid.add_theme_constant_override("h_separation",10); grid.add_theme_constant_override("v_separation",10); cards.add_child(grid)
 	for i in range(Shooter.WEAPONS.size()):
-		rpg_ui.tile(grid,Shooter.WEAPONS[i],"weapon",i,show_armory.bind(i),selected_weapon == i,148)
+		rpg_ui.tile(grid,Shooter.WEAPONS[i],"weapon",i,show_armory.bind(i),selected_weapon == i,168)
 
 func equip_weapon(index: int) -> void:
 	if state != "menu" or index < -1 or index >= Shooter.WEAPONS.size(): return

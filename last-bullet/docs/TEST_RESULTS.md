@@ -1,3 +1,9 @@
+# v1.1.1 illustrated art validation — 2026-11-06
+
+Seven suites rerun and pass: illustrated_art, polish, graphics, pets_practice, rpg_inventory, lobby, arsenal. Editor import clean. New atlas suite validates all18 distinct sprites, transparent corners, fitted aspect-preserving bounds, mipmaps and stable caches. Rendered VI/EN weapons and VI pets at360×800; source atlases inspected and runtime captures reviewed. No fresh full-suite or physical-device FPS claim; preceding v1.1.0 results remain historical.
+
+--- Previous validation ---
+
 # v1.1.0 validation — 2026-11-05
 
 All 18 current suites pass under Godot 4.6.3: polish plus the 17 v1.0 suites below. Editor import clean. Major-menu EN audit: zero remaining Vietnamese strings across visited routes. New test validates bilingual formatted templates/language reload; 41 cached textures; hero upgrade funds/caps/stats/save; kit safe-room/checkpoint/zero persistence; Hard first-clear cores; floating damage cap/expiry/reduced effects. Arsenal suite rerun independently with verbose logging exits cleanly (initial concurrent run emitted a resource-cleanup warning).

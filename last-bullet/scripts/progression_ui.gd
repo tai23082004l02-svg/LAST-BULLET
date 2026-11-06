@@ -169,17 +169,17 @@ func fuse() -> void:
 	fusion_picks.clear(); item_detail(fusion_base)
 func pets() -> void:
 	page("PET ĐỒNG HÀNH","Mang một pet • tự động hỗ trợ • không cản đường\nBEE có sẵn. Các pet tiếp theo mở khi qua lần đầu 5 ải.")
-	picture("pet",game.progress.pet,[0,1,2,1,2,3][game.progress.pet],true,150)
+	picture("pet",game.progress.pet,[0,1,2,1,2,3][game.progress.pet],true,210)
 	text(RPG.PETS[game.progress.pet]+" • "+RPG.PET_INFO[game.progress.pet],22)
 	var grid := GridContainer.new(); grid.columns = 3; grid.add_theme_constant_override("h_separation",10); grid.add_theme_constant_override("v_separation",10); game.cards.add_child(grid)
 	for i in range(6):
 		var owned: bool = game.progress.pets.has(i)
-		var b := Button.new(); b.focus_mode = Control.FOCUS_NONE; b.custom_minimum_size = Vector2(182,170)
+		var b := Button.new(); b.focus_mode = Control.FOCUS_NONE; b.custom_minimum_size = Vector2(182,190)
 		NeonArt.style_button(b,Color("83ead6") if owned else Color("4a5f70"),game.progress.pet == i)
 		b.pressed.connect(pet_detail.bind(i)); grid.add_child(b)
-		var art := View.new(); art.group = "pet"; art.index = i; art.owned = owned; art.rarity = [0,1,2,1,2,3][i]; art.position = Vector2(5,5); art.size = Vector2(172,100); b.add_child(art)
+		var art := View.new(); art.group = "pet"; art.index = i; art.owned = owned; art.rarity = [0,1,2,1,2,3][i]; art.position = Vector2(5,5); art.size = Vector2(172,126); b.add_child(art)
 		var label := Label.new(); label.text = RPG.PETS[i]+"\n"+("ĐỒNG HÀNH" if game.progress.pet == i else "ĐÃ CÓ" if owned else "CHƯA MỞ")
-		label.position = Vector2(5,108); label.size = Vector2(172,55); label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER; label.mouse_filter = Control.MOUSE_FILTER_IGNORE; label.add_theme_font_size_override("font_size",18); b.add_child(label)
+		label.position = Vector2(5,132); label.size = Vector2(172,55); label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER; label.mouse_filter = Control.MOUSE_FILTER_IGNORE; label.add_theme_font_size_override("font_size",18); b.add_child(label)
 	button("VỀ HÀNH TRANG",hub)
 func pet_detail(index: int) -> void:
 	var owned: bool = game.progress.pets.has(index)
