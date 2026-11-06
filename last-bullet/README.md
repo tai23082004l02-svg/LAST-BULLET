@@ -1,7 +1,10 @@
-# LAST BULLET — v1.2.0
+# LAST BULLET — v1.3.0
 ZORVYKA Games • Auto Fire. Endless Chaos.
 
 Godot 4 portrait robot survival shooter. Open `last-bullet/project.godot` from the repository root (or `project.godot` when already inside this directory). Validated with Godot 4.6.3.
+
+## Phòng thử 3D riêng
+Bấm **THỬ 3D** phía trên sảnh (hoặc menu chế độ → **PHÒNG THỬ3D**). Một robot 3D cầm súng, phòng có vật cản và 3 đợt quái. Kéo để né, thả tay bắn; nhấn đúp dùng xung. Có chế độ **Đẹp/Nhẹ**, pause, chơi lại và về sảnh. Không tiêu tài nguyên/phát thưởng, giữ nguyên game 2D và tiến trình. Đây là bản thử bằng mô hình khớp cứng nhẹ; chưa chuyển toàn bộ game. [Chi tiết và giới hạn](docs/PROTOTYPE_3D.md).
 
 ## Shop & các gói mới
 Chạm **vàng/vé/mảnh ở thanh trên**, hoặc **Đồ & pet → Cửa hàng**. Có quà ngày, vật phẩm, gói cố định, đổi mảnh lấy trang bị/pet và 3 bộ phủ màu ngoại hình. Xem trước nội dung, chọn trang bị, xác nhận rồi nhận thưởng; không tự trang bị. Admin nhận miễn phí để thử. **Chỉ dùng tài nguyên game, không có thanh toán tiền thật/quảng cáo.** Xem [giá, giới hạn và cách hoạt động](docs/SHOP.md).

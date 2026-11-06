@@ -1,3 +1,15 @@
+# CURRENT — v1.3.0 ONE-ROOM 3D PROTOTYPE (2026-11-06)
+
+User explicitly approved trying one3D room after discussing Archero/Habby-style rendering. This supersedes their earlier preference to avoid3D only for this isolated prototype; DO NOT migrate the whole game without feedback. Entry: THỬ3D on lobby title row or Modes→PHÒNG THỬ3D. Full existing2D game/shop/profiles remain. Scene prototype3d/Room.tscn; scripts room.gd and robot.gd.
+
+Original lightweight rigid-mesh robot with articulated leg/arm pivots, rifle mounted on body/hand area, actual3D orthographic oblique camera, room floor/walls/gate and two solid covers. One red Sentinel enemy type in3waves (3+4+4=11), delayed telegraphed ranged shots, auto-aim/release-to-fire, optional moving fire, drag-anywhere with12px threshold, double tap/Space energy pulse, HP/failure/retry/win/pause/return. Keyboard WASD/arrows; Android back returns home, focus loss pauses. No rewards, costs, drops or profile writes. Original2D host and its CanvasLayer are hidden/process-disabled while prototype lives as root sibling; restore host/menu on exit, free3D subtree. Quote UI revision invalidated on entry. Existing checkpoint/profile remains byte-identical in test.
+
+Compatibility renderer retained. No external model/texture assets, no animation sprite frames: three shared primitive meshes, solid-color materials, rigid joint animation (NOT production skinned skeletal model), simple contact shadows; no dynamic shadow maps/postprocess. High uses2x MSAA and full internal viewport, Low disables MSAA and halves viewport axes. Up to48projectiles/24FX rings, shared ring mesh, max4active enemies. Paused/finished3D viewport renders once then stops refreshing. Important:2D assets remain resident for safe return, so prototype is NOT a fair total-memory comparison against a complete3D migration. Phone FPS/thermal/battery must be tested on S23 Ultra.
+
+Nine suites rerun: prototype3d plus lobby/admin_mobile/shop/checkpoint_rewards/shooter_campaign/arsenal/held_weapon/graphics. New suite exercises drag/tap/second-finger skill/GUI exclusion, pause/quality, swept hits/cover, caps, full3-wave bot completion/loss/retry, repeated enter/exit cleanup and byte-identical profile. Rendered360×800 VI/EN, high/low, pause and original lobby;8-second scripted simulation clip included (NOT phone FPS footage). Read PROTOTYPE_3D.md. Next step is user playtest/visual direction feedback, not automatic full migration.
+
+--- Prior completed context ---
+
 # CURRENT — v1.2.0 LOCAL SHOP (2026-11-06)
 
 User approved shop supplies, fixed bundles, shard exchange and cosmetics using existing gold/shards, no real payments/ads. Implemented23 catalog entries across5 tabs. Entry: tap any lobby resource chip or Inventory→CỬA HÀNG. Old wallet still accessible. Read SHOP.md for full prices/rewards/limits and cosmetic semantics. VI/EN covered, shop route audit zero missing VN in EN.

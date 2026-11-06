@@ -9,6 +9,7 @@ var progress = Progress.new()
 var adventure: Node
 var rpg_ui: Node
 var companions: Node2D
+var prototype_room: Control
 var shop: Node
 var shop_ui: Node
 var ui_revision := 0
@@ -397,8 +398,24 @@ func show_help() -> void:
 	clear_cards("CÁCH CHƠI", "Kéo ở bất kỳ vùng trống nào để di chuyển; chạm đơn không kích hoạt. Robot tự ngắm địch gần trong tầm có đường bắn thông thoáng. Thả tay để bắn, kéo để né; có thể bật bắn khi di chuyển trong Cài đặt. Kho vũ khí ở tab VŨ KHÍ, tất cả mở sẵn để thử.\n\nNé đạn đỏ/cam của địch và vùng cảnh báo. Đạn sáng của bạn không gây hại cho bạn.\n\nNhấn đúp nhanh tại cùng vùng trống để dùng kỹ năng. Kéo hoặc giữ lâu không kích hoạt. Space trên PC vẫn dùng được. Thu XP để chọn nâng cấp súng. Pause để tạm dừng.\n\nMỗi trận: hạ 15 địch, dùng 3 kỹ năng, đạt chuỗi hạ 10 địch. Mỗi mục tiêu tự trả 15 vàng + 1 vé, một lần. Kết thúc nhận x2 vàng ngay, không quảng cáo.")
 	add_button("VỀ SẢNH",show_menu)
 
+func show_prototype_3d() -> void:
+	if state != "menu" or is_instance_valid(prototype_room): return
+	ui_revision += 1
+	var previous_mode := process_mode
+	prototype_room = load("res://prototype3d/Room.tscn").instantiate()
+	prototype_room.sounds_enabled = sound_on
+	prototype_room.exit_requested.connect(func():
+		if is_instance_valid(prototype_room): prototype_room.queue_free()
+		prototype_room = null
+		process_mode = previous_mode
+		show(); ui.show(); show_menu()
+	)
+	audio.stop_all(); state = "prototype_3d"; ui.hide(); hide(); process_mode = Node.PROCESS_MODE_DISABLED
+	get_tree().root.add_child(prototype_room)
+
 func show_modes() -> void:
 	clear_cards("CHOOSE YOUR RUN","Open arena to learn. Reflector to experiment. Blitz for a quick score chase.")
+	add_button("PHÒNG THỬ 3D",show_prototype_3d)
 	add_button("CAMPAIGN • 5 STAGES",show_campaign)
 	add_button("SURVIVAL • OPEN",start_run.bind("survival","open"))
 	add_button("SURVIVAL • REFLECTOR",start_run.bind("survival","reflector"))

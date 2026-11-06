@@ -13,6 +13,7 @@ var hero_hint: Label
 var hero_equip: Button
 var avatar: Button
 var avatar_art: Control
+var prototype_button: Button
 var title: Label
 var tagline: Label
 var left_arrow: Button
@@ -81,6 +82,8 @@ func _ready() -> void:
 		for i in range(8):
 			var direction := Vector2.from_angle(i*TAU/8)
 			gear_icon.draw_line(direction*17,direction*22,Color("b5e3e7"),5))
+	prototype_button = make_button(home_view,"THỬ 3D",game.show_prototype_3d)
+	prototype_button.add_theme_font_size_override("font_size",20)
 	title = label(home_view,"LAST BULLET",48,Color("ddffff"))
 	title.add_theme_font_override("font",NeonArt.title_font())
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -269,6 +272,8 @@ func layout(view_height: float, margins: Vector2) -> void:
 	var gear := top_bar.get_node("Gear") as Button
 	gear.position = Vector2(584,0)
 	gear.size = Vector2(96,96)
+	prototype_button.position = Vector2(548,154+safe.x)
+	prototype_button.size = Vector2(132,60)
 	title.position = Vector2(24,150+safe.x)
 	title.size = Vector2(672,60)
 	tagline.position = Vector2(24,211+safe.x)

@@ -28,3 +28,6 @@ User requested richer actual art after v1.1.0. Read docs/ILLUSTRATED_ART.md and 
 
 ## CURRENT v1.2 local shop
 User approved local shop/bundles/cosmetics. Read last-bullet/docs/SHOP.md and latest handoff.23 fixed offers, gold/shard costs, UTC/one-time limits, choices, confirmation, atomic save/rollback and last20 receipts; no real payments/ads. Preserve shared shard wallet/hero exchange and normal/admin isolation. Shop cosmetic finishes are tint/aura/footsteps/tracer sets, not new character atlases.23 suites pass incl shop/shop_rollback. No time-limited cash offers or payment SDK implied.
+
+## CURRENT v1.3 isolated 3D test
+User approved one3D room after discussing Archero-style rendering. Read last-bullet/docs/PROTOTYPE_3D.md. Do not migrate whole2D game without feedback. THỬ3D lobby button opens independent SubViewport/World3D; original host hidden/disabled, no save/rewards/costs, restored on exit. Original rigid articulated mesh robot/rifle/Sentinel,3waves. Not production skinned art;2D assets remain resident, no phone performance claims. Nine suites rerun including prototype3d/profile hash/cleanup. No external Habby assets.

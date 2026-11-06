@@ -1,3 +1,11 @@
+# v1.3.0 isolated3D room validation — 2026-11-06
+
+Nine suites pass: prototype3d, lobby, admin_mobile, shop, checkpoint_rewards, shooter_campaign, arsenal, held_weapon, graphics. Editor import clean. New trial suite covers real3-wave shooting bot completion (11enemies), cover/swept collisions,48/24caps, tap-vs-drag/GUI/second-finger skill, pause/quality, failure/retry, repeated entry/exit cleanup and byte-identical regular profile/checkpoint. Existing selected regressions protect2D commerce/combat/profiles/UI. Previous23-suite total is historical; no claim all24 were rerun here.
+
+Rendered VI/EN at360×800, high/low/pause/return and actual3D room. Eight-second offline scripted clip supplied at15frames per simulated second, not phone frame-rate measurement. Prototype uses original rigid articulated meshes, not a production skinned character.2D assets remain resident during trial. S23 Ultra thermal/FPS/battery/physical input unverified. See PROTOTYPE_3D.md.
+
+--- Previous validation ---
+
 # v1.2.0 shop validation — 2026-11-06
 
 All23 current suites pass: admin_mobile, arsenal, arsenal_stress, checkpoint_rewards, double_tap, graphics, held_weapon, illustrated_art, lobby, pets_practice, polish, projectile_fx, results, robots, rpg_inventory, rpg_stress, shooter_campaign, shooter_stress, shooting, shop, shop_rollback, summon, upgrade_ui. Editor import clean.

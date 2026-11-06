@@ -580,5 +580,19 @@ const PAIRS := {
   "TRẠM TIẾP TẾ": "SUPPLY STATION",
   "Phủ màu robot & súng • hào quang • dấu chân • màu vệt đạn. Chỉ đổi ngoại hình.": "Robot & weapon finish • aura • footsteps • tracer color. Cosmetic only.",
   "ADMIN • BỎ GIỚI HẠN MUA": "ADMIN • UNLIMITED PURCHASES",
-  "VÀNG  %s\nVÉ SUMMON  %s\nMẢNH ROBOT  %s\n\nVàng mua vật phẩm, gói và nâng cấp. Vé dùng summon; mảnh đổi robot, trang bị, pet và ngoại hình.": "GOLD  %s\nSUMMON TICKETS  %s\nROBOT SHARDS  %s\n\nGold buys supplies, bundles and upgrades. Tickets summon; shards exchange heroes, equipment, pets and cosmetics."
+  "VÀNG  %s\nVÉ SUMMON  %s\nMẢNH ROBOT  %s\n\nVàng mua vật phẩm, gói và nâng cấp. Vé dùng summon; mảnh đổi robot, trang bị, pet và ngoại hình.": "GOLD  %s\nSUMMON TICKETS  %s\nROBOT SHARDS  %s\n\nGold buys supplies, bundles and upgrades. Tickets summon; shards exchange heroes, equipment, pets and cosmetics.",
+  "THỬ 3D": "TRY 3D",
+  "PHÒNG THỬ 3D": "3D TEST ROOM",
+  "HP %d/5 • ĐỢT %d/3 • HẠ %d/11\n%02d:%02d • XUNG %s": "HP %d/5 • WAVE %d/3 • KILLS %d/11\n%02d:%02d • PULSE %s",
+  "HÌNH ẢNH: ĐẸP": "QUALITY: HIGH",
+  "HÌNH ẢNH: NHẸ": "QUALITY: LOW",
+  "BẮN KHI DI CHUYỂN: TẮT": "MOVING FIRE: OFF",
+  "BẮN KHI DI CHUYỂN: BẬT": "MOVING FIRE: ON",
+  "Kéo để né • Thả tay tự bắn\nNhấn đúp: xung năng lượng • Space trên PC": "Drag to dodge • Release to fire\nDouble tap: energy pulse • Space on PC",
+  "THỬ NGHIỆM 3D • KHÔNG PHÁT THƯỞNG": "3D PROTOTYPE • NO REWARDS",
+  "Phòng thử 3D • tiến trình 2D được giữ nguyên.": "3D test room • your 2D progress is preserved.",
+  "CHƠI LẠI PHÒNG THỬ": "RETRY TEST ROOM",
+  "HOÀN TẤT PHÒNG THỬ": "TEST ROOM COMPLETE",
+  "THỬ LẠI NHÉ": "TRY AGAIN",
+  "%d / 11 quái • %02d:%02d\nPhòng thử không tiêu tài nguyên và không phát thưởng.": "%d / 11 enemies • %02d:%02d\nThe test room costs nothing and grants no rewards."
 }
