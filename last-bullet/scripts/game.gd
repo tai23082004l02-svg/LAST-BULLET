@@ -449,6 +449,9 @@ func start_run(run_mode := "survival", layout := "open") -> void:
 	player_actor.target_lean = 0
 	player_actor.flash = 0
 	player_actor.clock = 0
+	player_actor.recoil = 0
+	player_actor.weapon = combat.weapon_id()
+	player_actor.aim = Vector2.UP
 	player_actor.reset_physics_interpolation()
 	aim = Vector2.UP
 	elapsed = 0
@@ -624,6 +627,7 @@ func _physics_process(delta: float) -> void:
 	xp_bar.visible = state in ["playing","paused"]
 	mission_label.visible = state in ["playing","paused"]
 	var playing_ui := state in ["playing","paused"]
+	player_actor.active = state == "playing"
 	companions.visible = state in ["playing","paused","upgrade"]
 	player_actor.visible = playing_ui and (invulnerable <= 0 or int(invulnerable*15)%2 == 0)
 	header_panel.visible = playing_ui
@@ -680,6 +684,8 @@ func _physics_process(delta: float) -> void:
 	player_actor.flash = maxf(0,invulnerable-1.1)*0.8 if invulnerable <= 1.2 else 0.0
 	companions.advance(delta)
 	combat.advance(delta)
+	player_actor.aim = aim
+	player_actor.weapon = combat.weapon_id()
 	if state != "playing": return
 	if mode == "campaign":
 		var hazard_index := 0
@@ -1135,8 +1141,6 @@ func _draw() -> void:
 	for point in pickups:
 		if not low_effects: NeonArt.glow(self,point,4,Color("ffc777"))
 		NeonArt.diamond(self,point,6,Color("ffd38c"))
-	if state == "playing":
-		draw_line(player+aim*22,player+aim*40,Color("b5fff0"),4)
 	# Floating joystick appears only while dragging.
 	if joystick_id != -1 and joystick_dragging and state == "playing":
 		# Thumb controls: layered rings and a damped visual thumb cap.

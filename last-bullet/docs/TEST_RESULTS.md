@@ -1,3 +1,9 @@
+# v1.1.3 held weapons validation — 2026-11-06
+
+Seven suites rerun and pass: held_weapon, arsenal, projectile_fx, graphics, arsenal_stress, shooting, admin_mobile. Editor import clean. New test checks7 default weapons and12 equipped weapons across8 aim directions, barrel/muzzle alignment, pose bounds, recoil freeze/reset and unchanged collision origin. Reviewed twelve drawn weapon poses and360×800 gameplay; no renderer errors. No fresh full-suite/physical phone benchmark claim.
+
+--- Previous validation ---
+
 # v1.1.2 projectile FX validation — 2026-11-06
 
 Eight suites pass: projectile_fx, arsenal, arsenal_stress, shooting, shooter_stress, graphics, polish, pets_practice. Stress suites rerun after muzzle polygon fix with no renderer errors. New projectile_fx checks all12 actual muzzle/impact styles and pause/cap/reset. Both full/reduced gallery renders and arsenal preview inspected. Existing full-suite counts below are historical, not freshly rerun. No phone FPS or APK claim.

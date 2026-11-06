@@ -1,3 +1,11 @@
+# CURRENT — v1.1.3 HELD WEAPONS (2026-11-06)
+
+User asked for guns to appear during combat. player_visual.gd now draws equipped weapon from shared illustrated art, with arms/grips, per-family width56–72, aim rotation, vertical mirroring on left aim to keep art upright, rear/front layering for upward/other directions and bounded recoil. game syncs selected/default weapon and aim after combat, resets recoil on start and freezes visual clock/recoil while paused. combat fire triggers kick and puts muzzle flash at transformed barrel. Removed old aim-stick line. No projectile/collision origin, hitbox, damage/rate, economy or save changes. project.godot unchanged.
+
+Seven relevant suites pass: held_weapon, arsenal, projectile_fx, graphics, arsenal_stress, shooting, admin_mobile. New suite checks7 robot defaults/12 weapons×8 directions, real muzzle alignment, recoil/pause/reset and unchanged projectile collision origin. Illustrated 12 equipped poses and360×800 actual gameplay captured with Xvfb/Mesa. Read HELD_WEAPONS.md. No actual S23 Ultra FPS/feel claim. Preserve all prior controls/profiles and no ads.
+
+--- Previous context ---
+
 # CURRENT — v1.1.2 PROJECTILE VISUALS (2026-11-06)
 
 User asked for projectile designs and effects after illustrated weapon/pet patch. Implemented shared projectile_art.gd (procedural deterministic drawing): all12 distinct projectiles, layered tracers/glow, muzzle flashes, per-style enemy/wall impacts, same renderer in arsenal animated preview. Combat routes muzzle/impact through existing bounded32 flash list. Pause freezes effects, reset clears; low_effects reduces layers/sparks. Hostile bullets retain distinct orange readability. No simulation/economy/save/control changes and no gameplay RNG consumption in drawing. Source project.godot engine/version metadata intentionally untouched for this art-only patch.

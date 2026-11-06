@@ -90,6 +90,9 @@ func fire() -> void:
 	if target == null: return
 	var direction: Vector2 = (target.position-game.player).normalized()
 	game.aim = direction
+	game.player_actor.aim = direction
+	game.player_actor.weapon = robot
+	game.player_actor.kick(robot)
 	var count: int = (5 if robot == 5 else 1)+game.upgrades[2]
 	for i in range(count):
 		var angle: float = (i-(count-1)*0.5)*(0.11 if robot == 5 else 0.13)
@@ -98,7 +101,7 @@ func fire() -> void:
 	if game.upgrades[8] > 0:
 		for angle in [-0.55,0.55]: emit_shot(game.player,direction.rotated(angle),damage()*0.7,game.upgrades[5],game.upgrades[6],RANGES[robot],SPEEDS[robot],robot)
 	if game.upgrades[9] > 0: emit_shot(game.player,-direction,damage()*0.8,game.upgrades[5],game.upgrades[6],RANGES[robot],SPEEDS[robot],robot)
-	add_flash({"p":game.player+direction*26,"ttl":0.08,"r":13.0,"color":COLORS[robot],"kind":"muzzle","style":robot,"dir":direction})
+	add_flash({"p":game.player+game.player_actor.muzzle_offset(),"ttl":0.08,"r":13.0,"color":COLORS[robot],"kind":"muzzle","style":robot,"dir":direction})
 	game.audio.play_event("shoot",1.2 if robot == 1 else 0.9 if robot == 5 else 1.0)
 
 func skill() -> void:
