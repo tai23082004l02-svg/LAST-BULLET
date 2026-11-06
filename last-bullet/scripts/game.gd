@@ -9,6 +9,9 @@ var progress = Progress.new()
 var adventure: Node
 var rpg_ui: Node
 var companions: Node2D
+var shop: Node
+var shop_ui: Node
+var ui_revision := 0
 var locale: Node
 var max_hp := 5
 var run_stats := {"hp":5,"damage":1.0,"speed":1.0,"crit":0.0,"cooldown":1.0,"cold":0.0,"burn":0.0,"barrier":false,"legend_shield":false,"sets":[0,0,0]}
@@ -159,6 +162,9 @@ func _ready() -> void:
 		admin_enabled = bool(mode_config.get_value("mode","admin",false))
 	if admin_enabled: save_path = admin_profile_path()
 	summon = Summons.new()
+	shop = preload("res://scripts/shop.gd").new()
+	shop.game = self
+	add_child(shop)
 	load_profile()
 	combat = Shooter.new()
 	combat.game = self
@@ -170,6 +176,9 @@ func _ready() -> void:
 	rpg_ui = preload("res://scripts/progression_ui.gd").new()
 	rpg_ui.game = self
 	add_child(rpg_ui)
+	shop_ui = preload("res://scripts/shop_ui.gd").new()
+	shop_ui.game = self
+	add_child(shop_ui)
 	companions = preload("res://scripts/companions.gd").new()
 	companions.game = self
 	companions.z_index = 18
@@ -310,6 +319,7 @@ func build_ui() -> void:
 	root.add_child(home_shell)
 
 func clear_card_nodes() -> void:
+	ui_revision += 1
 	for child in cards.get_children():
 		cards.remove_child(child)
 		child.queue_free()
@@ -452,6 +462,9 @@ func start_run(run_mode := "survival", layout := "open") -> void:
 	player_actor.recoil = 0
 	player_actor.weapon = combat.weapon_id()
 	player_actor.aim = Vector2.UP
+	player_actor.finish = shop.theme
+	player_actor.trail.clear()
+	player_actor.trail_clock = 0
 	player_actor.reset_physics_interpolation()
 	aim = Vector2.UP
 	elapsed = 0
@@ -628,6 +641,7 @@ func _physics_process(delta: float) -> void:
 	mission_label.visible = state in ["playing","paused"]
 	var playing_ui := state in ["playing","paused"]
 	player_actor.active = state == "playing"
+	player_actor.reduced = low_effects
 	companions.visible = state in ["playing","paused","upgrade"]
 	player_actor.visible = playing_ui and (invulnerable <= 0 or int(invulnerable*15)%2 == 0)
 	header_panel.visible = playing_ui
@@ -1245,9 +1259,10 @@ func load_profile() -> void:
 		admin_max_start = bool(config.get_value("admin","max_start",false))
 		admin_free_skill = bool(config.get_value("admin","free_skill",config.get_value("admin","free_deflect",false)))
 	progress.read(config,admin_enabled,campaign_cleared)
+	shop.read(config,admin_enabled)
 	audio.enabled = sound_on
 
-func save_profile() -> void:
+func save_profile() -> bool:
 	var config := ConfigFile.new()
 	config.load(save_path) # Retain legacy/unknown fields while writing the new schema.
 	config.set_value("profile","combat_version",2)
@@ -1276,9 +1291,11 @@ func save_profile() -> void:
 	config.set_value("campaign","cleared",campaign_cleared)
 	config.set_value("campaign","stars",campaign_stars)
 	progress.write(config)
+	shop.write(config)
 	var error := config.save(save_path+".tmp")
 	if error == OK: error = DirAccess.rename_absolute(ProjectSettings.globalize_path(save_path+".tmp"),ProjectSettings.globalize_path(save_path))
 	if error != OK: push_error("Không lưu được profile: "+str(error))
+	return error == OK
 
 func show_skins() -> void:
 	show_menu()
@@ -1732,9 +1749,13 @@ static func full_number(value: int) -> String:
 		result += digits[i]
 	return result
 
+func show_shop() -> void:
+	shop_ui.show_shop()
+
 func show_wallet() -> void:
 	state = "menu"
-	clear_cards("TÀI NGUYÊN","VÀNG  %s\nVÉ SUMMON  %s\nMẢNH ROBOT  %s\n\nVàng dùng mở skin đạn. Vé dùng summon; mảnh dùng đổi robot. Chạm số ở thanh trên để xem đầy đủ tại đây." % [full_number(coins),full_number(summon.tickets),full_number(summon.shards)])
+	clear_cards("TÀI NGUYÊN","VÀNG  %s\nVÉ SUMMON  %s\nMẢNH ROBOT  %s\n\nVàng mua vật phẩm, gói và nâng cấp. Vé dùng summon; mảnh đổi robot, trang bị, pet và ngoại hình." % [full_number(coins),full_number(summon.tickets),full_number(summon.shards)])
+	add_button("CỬA HÀNG",show_shop)
 	add_button("PHẦN THƯỞNG",show_rewards)
 	add_button("SUMMON",show_summon)
 	add_button("VỀ SẢNH",show_menu)
@@ -1784,7 +1805,7 @@ func show_armory(index := -2) -> void:
 	clear_cards("KHO VŨ KHÍ","12 vũ khí • chọn riêng với robot • mở miễn phí")
 	cards.add_theme_constant_override("separation",12)
 	var preview := preload("res://scripts/weapon_preview.gd").new()
-	preview.weapon = id; preview.custom_minimum_size = Vector2(560,184); cards.add_child(preview)
+	preview.weapon = id; preview.finish = shop.theme; preview.custom_minimum_size = Vector2(560,184); cards.add_child(preview)
 	result_label(cards,("THEO ROBOT • " if armory_preview == -1 else "")+Shooter.WEAPONS[id],28,Shooter.COLORS[id])
 	result_label(cards,Shooter.INFO[id],22,Color("abcad6"))
 	result_label(cards,"Mỗi viên %.2f • nhịp %.2fs • tầm %d" % [Shooter.DAMAGES[id],Shooter.INTERVALS[id],Shooter.RANGES[id]],20)

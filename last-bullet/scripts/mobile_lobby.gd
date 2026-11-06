@@ -56,8 +56,9 @@ func _ready() -> void:
 	badge.size = Vector2(90,24)
 	badge.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	for i in range(3):
-		var chip := make_button(top_bar,"",game.show_wallet)
+		var chip := make_button(top_bar,"",game.show_shop)
 		chip.name = "Resource%d" % i
+		chip.tooltip_text = "CỬA HÀNG"
 		var icon := Control.new()
 		icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		icon.position = Vector2(25,47)

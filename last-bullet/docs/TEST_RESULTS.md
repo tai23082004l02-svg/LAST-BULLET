@@ -1,3 +1,11 @@
+# v1.2.0 shop validation — 2026-11-06
+
+All23 current suites pass: admin_mobile, arsenal, arsenal_stress, checkpoint_rewards, double_tap, graphics, held_weapon, illustrated_art, lobby, pets_practice, polish, projectile_fx, results, robots, rpg_inventory, rpg_stress, shooter_campaign, shooter_stress, shooting, shop, shop_rollback, summon, upgrade_ui. Editor import clean.
+
+New shop tests exercise full validated purchase grants/prices/choice/limits, duplicate/stale/day/state guards, whole-bundle capacity, persistence/admin isolation, cosmetics/footstep caps/reduced mode and language. Injected save failures restore all touched values and permit safe retry. UI audit visits5 tabs and every23 offer detail/confirmation plus receipt/history: zero VN leftovers in English. Rendered360×800 all tabs, confirmation/receipt, starter choice, cosmetic preview and English. Small final wallet/tooltip/reset changes followed by targeted shop rerun and visual audit. No physical phone/performance/long-term economy claim.
+
+--- Previous validation ---
+
 # v1.1.3 held weapons validation — 2026-11-06
 
 Seven suites rerun and pass: held_weapon, arsenal, projectile_fx, graphics, arsenal_stress, shooting, admin_mobile. Editor import clean. New test checks7 default weapons and12 equipped weapons across8 aim directions, barrel/muzzle alignment, pose bounds, recoil freeze/reset and unchanged collision origin. Reviewed twelve drawn weapon poses and360×800 gameplay; no renderer errors. No fresh full-suite/physical phone benchmark claim.

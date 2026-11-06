@@ -5,11 +5,12 @@ static func streak(c: CanvasItem, a: Vector2, b: Vector2, color: Color, width: f
 	if not reduced: c.draw_line(a,b,Color(color,0.12),width*4,true)
 	c.draw_line(a,b,Color(color,0.65),width*1.8,true)
 	c.draw_line(a,b,Color("f1ffff"),maxf(1,width*0.45),true)
-static func projectile(c: CanvasItem, style: int, p: Vector2, direction: Vector2, skin: int, age: float, reduced := false) -> void:
+static func projectile(c: CanvasItem, style: int, p: Vector2, direction: Vector2, skin: int, age: float, reduced := false, finish := 0) -> void:
 	var d := direction.normalized() if direction != Vector2.ZERO else Vector2.RIGHT
 	var n := d.orthogonal()
 	var color: Color = COLORS[clampi(style,0,11)]
 	if style in [0,5,6] and skin > 0 and skin < Balance.SKIN_COLORS.size(): color = Balance.SKIN_COLORS[skin]
+	if finish in range(1,4): color = [Color.WHITE,Color("96ffd5"),Color("a5dfff"),Color("dab2ff")][finish]
 	if not reduced: c.draw_circle(p,11 if style != 4 else 8,Color(color,0.09))
 	match style:
 		0,5,6:

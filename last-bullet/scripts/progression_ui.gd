@@ -31,6 +31,7 @@ func hub() -> void:
 	for row in [["TRANG BỊ & HỢP NHẤT","gear",4,gear],["PET ĐỒNG HÀNH","pet",game.progress.pet,pets],["NÂNG NHÂN VẬT","hero",game.selected_robot,hero_training.bind(game.selected_robot)],["VẬT PHẨM HỖ TRỢ","item",0,supplies],["BỘ TRANG BỊ","gear",1,presets],["THƯ VIỆN SƯU TẦM","hero",4,library],["PHÓ BẢN & CÀN QUÉT","skill",5,game.show_campaign],["KHU THỬ TRANG BỊ","weapon",4,practice]]:
 		tile(grid,row[0],row[1],row[2],row[3],false,156,275)
 	button("NHẬN 5 VÉ CÀN QUÉT NGÀY (UTC)",daily,game.progress.daily_day != Time.get_date_string_from_system(true))
+	button("CỬA HÀNG",game.show_shop)
 	button("NGOẠI HÌNH ĐẠN",game.show_skins)
 
 func tile(parent: Node, title: String, group: String, index: int, callback: Callable, selected := false, height := 156, width := 182) -> Button:

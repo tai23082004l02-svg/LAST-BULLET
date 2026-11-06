@@ -364,7 +364,7 @@ func advance(delta: float) -> void:
 func _draw() -> void:
 	if game == null or game.state not in ["playing","paused","upgrade"]: return
 	for shot in shots:
-		draw_round(self,shot.style,shot.p,shot.v.normalized(),shot.skin,shot.age,game.low_effects)
+		draw_round(self,shot.style,shot.p,shot.v.normalized(),shot.skin,shot.age,game.low_effects,game.shop.theme)
 	for i in range(game.upgrades[14]):
 		var point: Vector2 = game.player+Vector2.from_angle(orbit_clock*1.5+i*PI)*45
 		draw_circle(point,10,Color("143743"))
@@ -400,5 +400,5 @@ func _draw() -> void:
 	if shield > 0 and shield_hits > 0:
 		draw_arc(game.player,38,0,TAU,32,Color("8bffe1"),3)
 
-static func draw_round(canvas: CanvasItem, style: int, point: Vector2, direction: Vector2, skin := 0, clock := 0.0, reduced := false) -> void:
-	ProjectileArt.projectile(canvas,style,point,direction,skin,clock,reduced)
+static func draw_round(canvas: CanvasItem, style: int, point: Vector2, direction: Vector2, skin := 0, clock := 0.0, reduced := false, finish := 0) -> void:
+	ProjectileArt.projectile(canvas,style,point,direction,skin,clock,reduced,finish)

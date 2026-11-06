@@ -25,3 +25,6 @@ Read last-bullet/docs/VISUAL_LANGUAGE_HERO.md and newest SESSION_HANDOFF. Author
 
 ## CURRENT v1.1.1 illustrated weapon/pet patch
 User requested richer actual art after v1.1.0. Read docs/ILLUSTRATED_ART.md and latest SESSION_HANDOFF. Two generated transparent sprite atlases replace geometric weapon/pet icons; preserve exact catalog order, cached texture API and runtime import configs. Seven relevant suites rerun; no gameplay/save/economy changes.
+
+## CURRENT v1.2 local shop
+User approved local shop/bundles/cosmetics. Read last-bullet/docs/SHOP.md and latest handoff.23 fixed offers, gold/shard costs, UTC/one-time limits, choices, confirmation, atomic save/rollback and last20 receipts; no real payments/ads. Preserve shared shard wallet/hero exchange and normal/admin isolation. Shop cosmetic finishes are tint/aura/footsteps/tracer sets, not new character atlases.23 suites pass incl shop/shop_rollback. No time-limited cash offers or payment SDK implied.

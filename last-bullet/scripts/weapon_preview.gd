@@ -2,6 +2,7 @@ extends Control
 const Combat = preload("res://scripts/combat.gd")
 var weapon := 0
 var clock := 0.0
+var finish := 0
 func _ready() -> void: mouse_filter = Control.MOUSE_FILTER_IGNORE
 func _process(delta: float) -> void:
 	clock += delta
@@ -16,5 +17,5 @@ func _draw() -> void:
 	if phase < 0.12: Combat.ProjectileArt.flash(self,"muzzle",weapon,muzzle,Vector2.RIGHT,phase/0.12)
 	for i in range(3):
 		var travel := fmod(clock*130+i*46,150)
-		Combat.draw_round(self,weapon,muzzle+Vector2(14+travel,sin(clock*2+i)*4),Vector2.RIGHT,0,clock+i)
+		Combat.draw_round(self,weapon,muzzle+Vector2(14+travel,sin(clock*2+i)*4),Vector2.RIGHT,0,clock+i,false,finish)
 	if phase > 0.85: Combat.ProjectileArt.flash(self,"impact",weapon,muzzle+Vector2(174,0),Vector2.RIGHT,(phase-0.85)/0.35)

@@ -1,3 +1,15 @@
+# CURRENT — v1.2.0 LOCAL SHOP (2026-11-06)
+
+User approved shop supplies, fixed bundles, shard exchange and cosmetics using existing gold/shards, no real payments/ads. Implemented23 catalog entries across5 tabs. Entry: tap any lobby resource chip or Inventory→CỬA HÀNG. Old wallet still accessible. Read SHOP.md for full prices/rewards/limits and cosmetic semantics. VI/EN covered, shop route audit zero missing VN in EN.
+
+Modules shop.gd (local catalog/transactions/persistence), shop_ui.gd (cards/detail/choice/confirmation/receipt/history), shop_art.gd (shared-asset bundle art). Shop initialized before load_profile; shop section stores counts/themes/selected theme/last20 receipts separately in normal/admin profiles. Existing inventory/summon/hero/checkpoint saves retained. save_profile now returns bool from existing temp+rename mechanism; shop validates full request before mutating, snapshots touched fields, rolls back on save failure. Quotes bind current UI revision/profile/day and are consumed once; navigation invalidates old callbacks. No random purchases. Admin bypasses price/limits, still respects inventory capacity/duplicate pet/theme ownership.
+
+Cosmetics are energy finishes, not newly painted character atlases: subtle shared robot+gun tint, aura, bounded12 footsteps (0.5s), tracer palette and legacy bullet skin grant. Purchase does not equip. Equip applies next run; reduced FX removes aura/footsteps. Existing elemental projectile shapes/cores and hostile colors retained. Source project.godot unchanged to avoid unnecessary local engine-config pull conflicts.
+
+Validation: all23 current suites pass incl new shop/shop_rollback. Shop test covers prices/grants/choices, daily/once limits, duplicate/stale/profile/state guards, capacity, reload/admin isolation, language and cosmetic footsteps. Rollback injects save failure and checks currencies/inventory/ownership/limits/history restoration. Rendered all5 shop tabs, starter selector, finish preview, confirmation, receipt, history and English featured at360×800. Physical S23 Ultra shop feel/economy progression still needs user test; no phone FPS claim.
+
+--- Previous release context ---
+
 # CURRENT — v1.1.3 HELD WEAPONS (2026-11-06)
 
 User asked for guns to appear during combat. player_visual.gd now draws equipped weapon from shared illustrated art, with arms/grips, per-family width56–72, aim rotation, vertical mirroring on left aim to keep art upright, rear/front layering for upward/other directions and bounded recoil. game syncs selected/default weapon and aim after combat, resets recoil on start and freezes visual clock/recoil while paused. combat fire triggers kick and puts muzzle flash at transformed barrel. Removed old aim-stick line. No projectile/collision origin, hitbox, damage/rate, economy or save changes. project.godot unchanged.
